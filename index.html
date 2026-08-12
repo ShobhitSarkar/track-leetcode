@@ -104,6 +104,18 @@
       return Math.round((new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1)) / 86400000);
     };
 
+    // LeetCode slugs are the problem title lowercased with runs of non-alphanumerics
+    // collapsed to single hyphens, so a usable link can be derived from the name alone.
+    // Anything that does not follow that (a non-LeetCode problem, a renamed title) is
+    // handled by letting the user store an explicit url, which always wins.
+    const slugify = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const leetcodeUrlFor = (name) => {
+      const slug = slugify(name || '');
+      return slug ? `https://leetcode.com/problems/${slug}/` : '';
+    };
+    const problemUrl = (p) => (p.url || '').trim() || leetcodeUrlFor(p.name);
+    const hasCard = (p) => Boolean((p.solution || '').trim() || (p.notes || '').trim());
+
     const THEME_KEY = 'recall_theme_v1';
     const loadTheme = () => { try { return localStorage.getItem(THEME_KEY) || 'light'; } catch { return 'light'; } };
     const saveTheme = (t) => { try { localStorage.setItem(THEME_KEY, t); } catch {} };
@@ -327,6 +339,10 @@
           user_id: user.id,
           name: data.name.trim(),
           pattern: data.pattern.trim(),
+          url: data.url.trim() || null,
+          solution: data.solution.trim() || null,
+          notes: data.notes.trim() || null,
+          solution_saved_at: data.solution.trim() ? todayStr() : null,
           history: [{ date: todayStr(), rating: data.rating }],
           next_review: addDays(todayStr(), RATING_INTERVALS[data.rating]),
           created_at: todayStr(),
@@ -350,6 +366,24 @@
         const { error } = await sb.from('problems')
           .update({ history: newHistory, next_review: newNextReview })
           .eq('id', id);
+        if (error) { setProblems(prev); alert('Failed to save: ' + error.message); }
+      };
+
+      // Saves the card fields (solution / notes / url). Kept separate from rateProblem so
+      // editing a card never disturbs the review schedule.
+      const saveCard = async (id, fields) => {
+        const patch = {
+          url: fields.url.trim() || null,
+          solution: fields.solution.trim() || null,
+          notes: fields.notes.trim() || null,
+        };
+        const current = problems.find((p) => p.id === id);
+        if (patch.solution && patch.solution !== current?.solution) {
+          patch.solution_saved_at = todayStr();
+        }
+        const prev = problems;
+        setProblems(problems.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+        const { error } = await sb.from('problems').update(patch).eq('id', id);
         if (error) { setProblems(prev); alert('Failed to save: ' + error.message); }
       };
 
@@ -461,11 +495,13 @@
                 </div>
 
                 {view === 'today' && (
-                  <TodayView due={dueToday} onRate={rateProblem} hasProblems={problems.length > 0}
-                    onGoAdd={() => setView('add')} C={C} />
+                  <TodayView due={dueToday} onRate={rateProblem} onSaveCard={saveCard}
+                    hasProblems={problems.length > 0} onGoAdd={() => setView('add')} C={C} />
                 )}
                 {view === 'add' && <AddView onAdd={addProblem} C={C} />}
-                {view === 'all' && <AllView problems={problems} onDelete={deleteProblem} C={C} />}
+                {view === 'all' && (
+                  <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} C={C} />
+                )}
               </>
             )}
           </div>
@@ -473,7 +509,7 @@
       );
     }
 
-    function TodayView({ due, onRate, hasProblems, onGoAdd, C }) {
+    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd, C }) {
       if (!hasProblems) return (
         <EmptyState title="Nothing tracked yet"
           body="Add the first problem you've solved recently. Rate it honestly — that rating sets when you'll see it again."
@@ -486,13 +522,156 @@
       );
       return (
         <div className="space-y-3">
-          {due.map((p) => <ReviewCard key={p.id} problem={p} onRate={onRate} C={C} />)}
+          {due.map((p) => (
+            <ReviewCard key={p.id} problem={p} onRate={onRate} onSaveCard={onSaveCard} C={C} />
+          ))}
         </div>
       );
     }
 
-    function ReviewCard({ problem, onRate, C }) {
+    function ProblemLink({ problem, C }) {
+      const href = problemUrl(problem);
+      if (!href) return null;
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer"
+          style={{ color: C.primary, fontSize: 11, textDecoration: 'none' }}>
+          ↗ open problem
+        </a>
+      );
+    }
+
+    function Field({ label, value, onChange, placeholder, mono, rows, C }) {
+      return (
+        <div>
+          <label className="block mb-1.5"
+            style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
+            {label}
+          </label>
+          <textarea value={value} onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder} rows={rows}
+            className={`w-full px-3 py-2 rounded-lg outline-none transition ${mono ? 'font-mono' : ''}`}
+            style={{
+              background: C.bg, border: `1px solid ${C.border}`, color: C.text,
+              fontSize: mono ? 12 : 13, lineHeight: 1.5, resize: 'vertical',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = C.primary)}
+            onBlur={(e) => (e.target.style.borderColor = C.border)} />
+        </div>
+      );
+    }
+
+    // Edit form for the three card fields. Used from both the review flow and the library.
+    function CardForm({ problem, onSave, onCancel, C }) {
+      const [solution, setSolution] = useState(problem.solution || '');
+      const [notes, setNotes] = useState(problem.notes || '');
+      const [url, setUrl] = useState(problem.url || '');
+
+      const save = () => { onSave(problem.id, { solution, notes, url }); onCancel(); };
+
+      return (
+        <div className="space-y-3">
+          <Field label="MY SOLUTION" value={solution} onChange={setSolution} mono rows={10}
+            placeholder="Paste the solution you actually wrote." C={C} />
+          <Field label="MY NOTES" value={notes} onChange={setNotes} rows={3}
+            placeholder="The insight, the edge case you missed, why it works." C={C} />
+          <div>
+            <label className="block mb-1.5"
+              style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
+              PROBLEM LINK
+            </label>
+            <input type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+              placeholder={leetcodeUrlFor(problem.name) || 'https://…'}
+              className="w-full px-3 py-2 rounded-lg outline-none transition"
+              style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, fontSize: 12 }}
+              onFocus={(e) => (e.target.style.borderColor = C.primary)}
+              onBlur={(e) => (e.target.style.borderColor = C.border)} />
+            <div className="mt-1" style={{ color: C.faint, fontSize: 10 }}>
+              Leave blank to use the LeetCode link guessed from the name.
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={save} className="px-3 py-1.5 rounded font-medium"
+              style={{ background: C.primary, color: C.onPrimary, fontSize: 12 }}>
+              Save card
+            </button>
+            <button onClick={onCancel} className="px-3 py-1.5 rounded font-medium"
+              style={{ background: C.tabsBg, color: C.muted, fontSize: 12 }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Read view of a card, with an edit toggle. This is the "back" of the flashcard.
+    function CardPanel({ problem, onSave, C }) {
+      const [editing, setEditing] = useState(false);
+
+      if (editing) {
+        return <CardForm problem={problem} onSave={onSave} onCancel={() => setEditing(false)} C={C} />;
+      }
+
+      // Stay compact when there is nothing saved. Opening the full form here would push
+      // the rating buttons off screen for anyone who just wants to rate and move on.
+      if (!hasCard(problem)) {
+        return (
+          <div className="rounded-lg p-3 flex items-center justify-between gap-3"
+            style={{ background: C.bg, border: `1px dashed ${C.border}` }}>
+            <span style={{ color: C.muted, fontSize: 12 }}>No solution saved yet.</span>
+            <button onClick={() => setEditing(true)}
+              className="px-3 py-1.5 rounded font-medium shrink-0"
+              style={{ background: C.tabsBg, color: C.text, fontSize: 12 }}>
+              Add solution
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-3">
+          {problem.solution && (
+            <div>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
+                  MY SOLUTION
+                </span>
+                {problem.solution_saved_at && (
+                  <span style={{ color: C.faint, fontSize: 10 }}>saved {problem.solution_saved_at}</span>
+                )}
+              </div>
+              <pre className="font-mono rounded-lg p-3 overflow-x-auto"
+                style={{
+                  background: C.bg, border: `1px solid ${C.border}`, color: C.text,
+                  fontSize: 12, lineHeight: 1.5, margin: 0, whiteSpace: 'pre',
+                }}>
+                {problem.solution}
+              </pre>
+            </div>
+          )}
+          {problem.notes && (
+            <div>
+              <div className="mb-1.5" style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
+                MY NOTES
+              </div>
+              <div style={{ color: C.text, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                {problem.notes}
+              </div>
+            </div>
+          )}
+          <button onClick={() => setEditing(true)} className="px-3 py-1.5 rounded font-medium"
+            style={{ background: C.tabsBg, color: C.muted, fontSize: 12 }}>
+            Edit card
+          </button>
+        </div>
+      );
+    }
+
+    function ReviewCard({ problem, onRate, onSaveCard, C }) {
       const [rating, setRating] = useState(null);
+      const [revealed, setRevealed] = useState(false);
+      // Nothing saved yet means there is nothing to recall against, so go straight to
+      // rating rather than dead-ending behind a reveal button that shows an empty card.
+      const showRating = revealed || !hasCard(problem);
       const lastReview = problem.history[problem.history.length - 1];
       const daysSince = daysBetween(lastReview.date, todayStr());
       const daysOverdue = daysBetween(problem.next_review, todayStr());
@@ -520,15 +699,39 @@
             {daysOverdue > 0 && (
               <span style={{ color: C.accent, fontWeight: 500 }}>{daysOverdue}d overdue</span>
             )}
+            <ProblemLink problem={problem} C={C} />
           </div>
-          <div className="mb-2" style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-            HOW DID IT GO?
+
+          <div className="mb-4">
+            {revealed || !hasCard(problem) ? (
+              <CardPanel problem={problem} onSave={onSaveCard} C={C} />
+            ) : (
+              <div className="rounded-lg p-5 text-center"
+                style={{ background: C.bg, border: `1px dashed ${C.border}` }}>
+                <div className="mb-3" style={{ color: C.muted, fontSize: 12 }}>
+                  Try to recall it first.
+                </div>
+                <button onClick={() => setRevealed(true)}
+                  className="px-4 py-2 rounded-lg font-medium transition"
+                  style={{ background: C.primary, color: C.onPrimary, fontSize: 13 }}>
+                  Reveal solution
+                </button>
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[4, 3, 2, 1].map((r) => (
-              <RatingButton key={r} rating={r} selected={rating === r} onClick={() => handleRate(r)} C={C} />
-            ))}
-          </div>
+
+          {showRating && (
+            <>
+              <div className="mb-2" style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
+                HOW DID IT GO?
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[4, 3, 2, 1].map((r) => (
+                  <RatingButton key={r} rating={r} selected={rating === r} onClick={() => handleRate(r)} C={C} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       );
     }
@@ -561,12 +764,16 @@
       const [name, setName] = useState('');
       const [pattern, setPattern] = useState('');
       const [rating, setRating] = useState(4);
+      const [solution, setSolution] = useState('');
+      const [notes, setNotes] = useState('');
+      const [url, setUrl] = useState('');
       const canSubmit = name.trim().length > 0 && pattern.trim().length > 0;
 
       const submit = () => {
         if (!canSubmit) return;
-        onAdd({ name, pattern, rating });
+        onAdd({ name, pattern, rating, solution, notes, url });
         setName(''); setPattern(''); setRating(4);
+        setSolution(''); setNotes(''); setUrl('');
       };
 
       return (
@@ -622,6 +829,31 @@
             </div>
           </div>
 
+          <div className="space-y-3 rounded-lg p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+            <div style={{ color: C.faint, fontSize: 11, lineHeight: 1.5 }}>
+              Optional, but this is what you'll be shown when the problem comes back around.
+            </div>
+            <Field label="MY SOLUTION" value={solution} onChange={setSolution} mono rows={8}
+              placeholder="Paste the solution you actually wrote." C={C} />
+            <Field label="MY NOTES" value={notes} onChange={setNotes} rows={3}
+              placeholder="The insight, the edge case you missed, why it works." C={C} />
+            <div>
+              <label className="block mb-1.5"
+                style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
+                PROBLEM LINK
+              </label>
+              <input type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+                placeholder={leetcodeUrlFor(name) || 'https://…'}
+                className="w-full px-3 py-2 rounded-lg outline-none transition"
+                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, fontSize: 12 }}
+                onFocus={(e) => (e.target.style.borderColor = C.primary)}
+                onBlur={(e) => (e.target.style.borderColor = C.border)} />
+              <div className="mt-1" style={{ color: C.faint, fontSize: 10 }}>
+                Leave blank to use the LeetCode link guessed from the name.
+              </div>
+            </div>
+          </div>
+
           <button onClick={submit} disabled={!canSubmit}
             className="w-full py-3.5 rounded-lg font-semibold transition"
             style={{
@@ -635,8 +867,9 @@
       );
     }
 
-    function AllView({ problems, onDelete, C }) {
+    function AllView({ problems, onDelete, onSaveCard, C }) {
       const [confirmDelete, setConfirmDelete] = useState(null);
+      const [expanded, setExpanded] = useState(null);
 
       if (problems.length === 0) return (
         <EmptyState title="Empty library"
@@ -656,12 +889,15 @@
               : daysUntil === 0 ? 'due today' : `in ${daysUntil}d`;
 
             return (
-              <div key={p.id} className="rounded-lg p-3 flex items-center justify-between gap-3"
+              <div key={p.id} className="rounded-lg p-3"
                 style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+                <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono font-semibold truncate" style={{ fontSize: 14, color: C.text }}>
-                    {p.name}
-                  </div>
+                  <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}
+                    className="font-mono font-semibold truncate text-left w-full"
+                    style={{ fontSize: 14, color: C.text }}>
+                    {expanded === p.id ? '▾' : '▸'} {p.name}
+                  </button>
                   <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5"
                     style={{ fontSize: 11, color: C.muted }}>
                     <span>{p.pattern}</span><span>·</span>
@@ -670,6 +906,8 @@
                       color: overdue || daysUntil === 0 ? C.accent : C.muted,
                       fontWeight: overdue || daysUntil === 0 ? 500 : 400,
                     }}>{dueLabel}</span>
+                    {hasCard(p) && (<><span>·</span><span style={{ color: C.success }}>card</span></>)}
+                    <ProblemLink problem={p} C={C} />
                   </div>
                 </div>
                 {confirmDelete === p.id ? (
@@ -692,6 +930,12 @@
                     aria-label="Delete problem">
                     ×
                   </button>
+                )}
+                </div>
+                {expanded === p.id && (
+                  <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
+                    <CardPanel problem={p} onSave={onSaveCard} C={C} />
+                  </div>
                 )}
               </div>
             );
