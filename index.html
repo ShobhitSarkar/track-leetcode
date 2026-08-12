@@ -17,6 +17,16 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Babel's stock "react" preset compiles JSX with the automatic runtime, which emits
+    // `import { jsx } from "react/jsx-runtime"`. There is no bundler or import map on this
+    // page, so that bare specifier cannot be resolved and the app never mounts (blank page).
+    // React and ReactDOM are loaded as UMD globals above, so compile JSX to the classic
+    // React.createElement form instead, which needs no module resolution at all.
+    Babel.registerPreset('react-classic', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
@@ -32,7 +42,7 @@
 <body>
   <div id="root"></div>
 
-  <script type="text/babel" data-presets="react" data-type="module">
+  <script type="text/babel" data-presets="react-classic" data-type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     // ============================================================
     // CONFIG — replace with your own Supabase creds.
