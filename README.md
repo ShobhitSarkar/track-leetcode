@@ -1,86 +1,53 @@
-# Recall — Deploy Guide (Supabase + Vercel)
+# Recall — Deploy Guide (Supabase + Vercel, magic link auth)
 
-Cloud-synced spaced repetition tracker for LeetCode. Google login, works on any device with your account.
+Cloud-synced spaced repetition tracker for LeetCode. Sign in with an email link. Works on any device with the same email.
 
-## The 8-step overview
+## The 6-step overview
 
-You'll do these in order. Total time: ~25–40 min if you've never used Supabase, less if you have.
+Do these in order. Total time: ~15 min.
 
 1. Create Supabase project
 2. Run the schema SQL
-3. Set up Google OAuth (Google Cloud + Supabase)
-4. Put your Supabase creds into `index.html`
-5. Push to GitHub
-6. Deploy to Vercel
-7. Point Supabase's redirect URLs at your Vercel URL
-8. Sign in and add to home screen
+3. Put your Supabase creds into `index.html`
+4. Push to GitHub
+5. Deploy to Vercel
+6. Point Supabase's redirect URLs at your Vercel URL, sign in, install
+
+That's it. No Google Cloud console, no OAuth app, no verification screens.
 
 ---
 
 ## 1. Create Supabase project
 
-You said you've done this. If not: [supabase.com](https://supabase.com) → New project → any name → any region near you → set a database password (save it somewhere). Wait ~2 min for provisioning.
+You said you've done this. If not: [supabase.com](https://supabase.com) → sign in with GitHub → **New project** → any name → any region near you → set a database password (save it somewhere). Wait ~2 min for provisioning.
 
 ## 2. Run the schema
 
-- Open your project → left sidebar → **SQL Editor** → **New query**
-- Open `schema.sql` from this folder, paste the whole thing, click **Run**
-- You should see "Success. No rows returned." That's correct — it created the table, index, and RLS policies
+- Supabase → left sidebar → **SQL Editor** → **New query**
+- Open `schema.sql` from this folder, paste the whole thing in, click **Run**
+- Should say "Success. No rows returned." That means it created the table, index, and RLS policies
 
-Verify: sidebar → **Table Editor** → you should see a `problems` table with the right columns.
+Verify: sidebar → **Table Editor** → you should see a `problems` table with columns `id`, `user_id`, `name`, `pattern`, `history`, `next_review`, `created_at`.
 
-## 3. Set up Google OAuth
+## 3. Put your Supabase creds into `index.html`
 
-This is the fiddliest step. You're doing two things: creating an OAuth app in Google Cloud, then connecting it to Supabase.
-
-### 3a. Get Supabase's callback URL
-
-- Supabase → sidebar → **Authentication** → **Providers** → click **Google**
-- Copy the **Callback URL (for OAuth)** — looks like `https://YOURPROJECT.supabase.co/auth/v1/callback`
-- Keep this tab open
-
-### 3b. Create Google OAuth credentials
-
-- Go to [console.cloud.google.com](https://console.cloud.google.com)
-- Create a new project (top-left dropdown → New Project → name it "Recall")
-- Left sidebar → **APIs & Services** → **OAuth consent screen**
-  - User Type: **External** → Create
-  - App name: Recall, User support email: yours, Developer contact: yours → Save and Continue
-  - Scopes: skip → Save and Continue
-  - Test users: add your Google email → Save and Continue
-- Left sidebar → **Credentials** → **Create Credentials** → **OAuth client ID**
-  - Application type: **Web application**
-  - Name: Recall
-  - Authorized redirect URIs: paste the Supabase callback URL from step 3a
-  - Create
-- Copy the **Client ID** and **Client Secret** from the popup
-
-### 3c. Paste into Supabase
-
-- Back in the Supabase Google provider tab
-- Enable the provider (toggle on)
-- Paste Client ID and Client Secret
-- Save
-
-## 4. Put your Supabase creds into `index.html`
-
-- Supabase → sidebar → **Project Settings** (gear icon) → **API**
+- Supabase → sidebar → **Project Settings** (gear icon at bottom) → **API**
 - Copy **Project URL** and **anon public** key
-- Open `index.html`, find these lines near the top:
+- Open `index.html`, find these lines near the top of the `<script>` block:
 
 ```js
 const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
 ```
 
-Replace both with your actual values. Both are safe to commit publicly — the anon key is designed to be exposed, and the Row Level Security policies from step 2 keep your data safe.
+Replace both with your actual values. Both are safe to commit publicly — the anon key is designed to be exposed, and the Row Level Security policies from step 2 are what actually keep your data safe (each row is tied to your user ID; the DB refuses to return anyone else's rows).
 
-## 5. Push to GitHub
+## 4. Push to GitHub
 
 Easiest way (no local git needed):
 
-- Go to [github.com/new](https://github.com/new)
-- Repo name: `recall` (public or private, doesn't matter)
+- [github.com/new](https://github.com/new)
+- Repo name: `recall` (public or private, doesn't matter — the anon key is safe either way)
 - Create repository (don't init with README, we have our own)
 - On the empty repo page, click **uploading an existing file**
 - Drag in all four files: `index.html`, `manifest.json`, `icon.svg`, `README.md`
@@ -98,62 +65,72 @@ git remote add origin https://github.com/YOUR_USERNAME/recall.git
 git push -u origin main
 ```
 
-## 6. Deploy to Vercel
+## 5. Deploy to Vercel
 
-- Go to [vercel.com/new](https://vercel.com/new)
-- If it's your first time, sign in with GitHub and authorize
+- [vercel.com/new](https://vercel.com/new)
+- If first time, sign in with GitHub, authorize
 - Import the `recall` repo
-- Framework Preset: **Other** (Vercel will auto-detect it as a static site)
-- Leave everything else as default
-- Click **Deploy**
+- Framework Preset: **Other** (Vercel auto-detects it as a static site)
+- Leave everything else default
+- **Deploy**
 - ~15 seconds later you get a URL like `https://recall-xyz.vercel.app`
 
-Copy that URL — you need it in step 7.
+Copy that URL.
 
-## 7. Point Supabase at your Vercel URL
+## 6. Point Supabase at your Vercel URL, sign in
+
+Supabase needs to know your Vercel URL is a legitimate place to send users after they click the magic link.
 
 - Supabase → **Authentication** → **URL Configuration**
 - **Site URL**: paste your Vercel URL (e.g. `https://recall-xyz.vercel.app`)
-- **Redirect URLs**: add the same URL. Also add `http://localhost:3000` and `http://localhost:5173` if you'll ever run it locally
+- **Redirect URLs**: add the same URL. Optional: also add `http://localhost:3000` and `http://localhost:5173` if you'll ever test locally
 - Save
 
-## 8. Sign in and install
+Now try it:
 
-- Open your Vercel URL in Safari (iPhone) or Chrome (Android)
-- Tap **Continue with Google** — first time will show a "not verified app" warning since you're in test mode. Click **Advanced → Go to Recall (unsafe)** — this only shows because your OAuth app hasn't been submitted for Google review. Your data is safe; only you can access it because you're the only test user.
-- You land in the app. Add a few problems.
-- Add to home screen:
-  - **iPhone Safari**: Share → Add to Home Screen
-  - **Android Chrome**: menu → Install app
+- Open your Vercel URL on your phone (Safari on iPhone, Chrome on Android)
+- Type your email → tap **Send sign-in link**
+- Open your email, tap the link — it takes you back to the app, signed in
+- Add a couple of problems
 
-Done. Same login on your laptop = same queue.
+Then install to home screen:
+
+- **iPhone Safari**: Share → **Add to Home Screen**
+- **Android Chrome**: menu (⋮) → **Install app**
+
+Same login on your laptop = same queue. Sessions last weeks by default, so you'll rarely see the sign-in screen again.
 
 ---
 
 ## When something breaks
 
-**"Sign in redirects but comes back to the sign-in screen"**
-Redirect URL isn't in Supabase's allow-list. Re-check step 7 — the Vercel URL must match exactly (including https://) and be in both Site URL and Redirect URLs.
+**"Sign-in link goes to the app but I'm not signed in"**
+The Redirect URL isn't in Supabase's allow-list. Re-check step 6. It must match your Vercel URL exactly, including `https://`.
 
 **"Failed to save: new row violates row-level security"**
 RLS policies didn't get created. Re-run `schema.sql`.
 
-**"This app hasn't been verified" every sign-in**
-You're on Google's testing tier, which is fine forever for personal use. To remove the warning you'd need to submit the app for Google verification (not worth it for a personal tool).
+**Email never arrives**
+Supabase's free tier is capped at ~4 emails/hour and has occasional deliverability issues. Check spam. If still nothing after a few minutes, wait 5 min and try again. For production use you'd add a custom SMTP provider (Resend, Postmark) in Supabase → Project Settings → Auth → SMTP, but it's overkill for personal use.
+
+**Magic link opens in a different browser than the one I signed in from**
+This happens on iOS if you click links inside Gmail's in-app browser. It'll still work — you'll be signed in in whichever browser opens the link. Best experience: use Apple Mail or Gmail's default mail app so links open in Safari.
 
 **Data not syncing between devices**
-Both devices logged in with the same Google account? Try sign-out + sign-in.
+Signed in with the same email on both? Try sign-out + sign-in on one device.
 
 ## Customizing later
 
 Everything's in `index.html`:
-- `RATING_INTERVALS` — days per rating
+- `RATING_INTERVALS` — days per rating (currently 30/12/5/2)
 - `RATING_LABELS` — rename the ratings
-- `COMMON_PATTERNS` — pattern chips
-- `THEMES` — colors
+- `COMMON_PATTERNS` — pattern chips shown when adding
+- `THEMES` — color palette for light and dark
 
 Push to GitHub → Vercel auto-redeploys.
 
 ## Scaling notes
 
-Supabase free tier gives you 500MB database, 2GB bandwidth, 50k monthly active users. You'll never come close.
+Supabase free tier: 500 MB database, unlimited API requests, 50k monthly active users, 4 auth emails/hour. You'll never come close to any of these for personal use.
+
+If email throttling ever bothers you (probably won't, since sessions last weeks), plug in Resend or Postmark for SMTP — free tier there is 3k/month, plenty.
