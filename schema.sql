@@ -7,10 +7,22 @@ create table if not exists public.problems (
   user_id       uuid not null references auth.users(id) on delete cascade,
   name          text not null,
   pattern       text not null,
+  url           text,
+  solution      text,
+  notes         text,
+  solution_saved_at date,
   history       jsonb not null default '[]'::jsonb,
   next_review   date not null,
   created_at    date not null default current_date
 );
+
+-- Migration: adds the flashcard columns to a table created before they existed.
+-- `create table if not exists` above is a no-op on an existing table, so these are
+-- what actually add the columns for you. Safe to run repeatedly.
+alter table public.problems add column if not exists url text;
+alter table public.problems add column if not exists solution text;
+alter table public.problems add column if not exists notes text;
+alter table public.problems add column if not exists solution_saved_at date;
 
 -- Index for the app's main query (my problems, soonest first)
 create index if not exists problems_user_next_review_idx

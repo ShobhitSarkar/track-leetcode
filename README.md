@@ -27,7 +27,12 @@ You said you've done this. If not: [supabase.com](https://supabase.com) → sign
 - Open `schema.sql` from this folder, paste the whole thing in, click **Run**
 - Should say "Success. No rows returned." That means it created the table, index, and RLS policies
 
-Verify: sidebar → **Table Editor** → you should see a `problems` table with columns `id`, `user_id`, `name`, `pattern`, `history`, `next_review`, `created_at`.
+Verify: sidebar → **Table Editor** → you should see a `problems` table with columns `id`, `user_id`, `name`, `pattern`, `url`, `solution`, `notes`, `solution_saved_at`, `history`, `next_review`, `created_at`.
+
+**Already running an older version?** Re-run `schema.sql` the same way. It is idempotent, and
+the `alter table ... add column if not exists` lines at the top add the flashcard columns
+(`url`, `solution`, `notes`, `solution_saved_at`) to your existing table without touching your
+data. The app shows an empty card for every problem until you fill one in.
 
 ## 3. Put your Supabase creds into `index.html`
 
@@ -126,6 +131,20 @@ Everything's in `index.html`:
 - `RATING_LABELS` — rename the ratings
 - `COMMON_PATTERNS` — pattern chips shown when adding
 - `THEMES` — color palette for light and dark
+- `leetcodeUrlFor` — how a problem link is guessed from the name
+
+## Flashcards
+
+Each problem can hold the solution you actually wrote, your notes, and a link to the
+problem itself. When it comes up for review, the card stays face down behind a
+**Reveal solution** button so you attempt recall first, then check yourself, then rate.
+
+- Fill any of it in when adding a problem, or later from the **All** tab (click a problem
+  to expand it).
+- The link is optional. Leave it blank and the app guesses the LeetCode URL from the
+  problem name, which works for standard LeetCode titles. Set it explicitly for anything
+  else and yours always wins.
+- Editing a card never changes your review schedule.
 
 Push to GitHub → Vercel auto-redeploys.
 
