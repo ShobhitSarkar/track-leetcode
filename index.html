@@ -77,6 +77,24 @@
       console.error('Uncaught error:', e.error || e.message);
     });
 
+    // When a magic link is invalid, already used, or expired, Supabase bounces the
+    // browser back here with the reason in the URL hash and no session. Without this,
+    // the app just re-renders the sign-in form and the user has no idea why they were
+    // not signed in. Read the hash before anything clears it, then strip it so a
+    // refresh does not resurface a stale error.
+    const initialAuthError = (() => {
+      const hash = window.location.hash;
+      if (!hash.includes('error')) return null;
+      const params = new URLSearchParams(hash.slice(1));
+      const code = params.get('error_code');
+      if (!params.get('error') && !code) return null;
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      if (code === 'otp_expired') {
+        return 'That sign-in link has already been used or has expired. Each link works once. Request a fresh one below.';
+      }
+      return params.get('error_description') || 'Sign-in failed. Request a new link below.';
+    })();
+
     const RATING_INTERVALS = { 1: 30, 2: 12, 3: 5, 4: 2 };
     const RATING_LABELS = {
       1: 'Trivial', 2: 'Solid', 3: 'Got it eventually', 4: 'Struggled hard',
@@ -171,7 +189,7 @@
       const [email, setEmail] = useState('');
       const [sending, setSending] = useState(false);
       const [sent, setSent] = useState(false);
-      const [error, setError] = useState(null);
+      const [error, setError] = useState(initialAuthError);
 
       const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
