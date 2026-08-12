@@ -39,8 +39,8 @@
     // Both are safe to expose publicly (anon key is client-side by design).
     // Security is enforced by Row Level Security in the DB schema.
     // ============================================================
-    const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+    const SUPABASE_URL = 'https://ipotfybjewmxmmdklniy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_ZqPnxAT_g8he81dVRvbRfw_SZZeFPI9';
     // ============================================================
 
     const { useState, useEffect } = React;
@@ -137,16 +137,37 @@
     }
 
     function AuthScreen({ C, theme, onToggleTheme }) {
-      const [signingIn, setSigningIn] = useState(false);
+      const [email, setEmail] = useState('');
+      const [sending, setSending] = useState(false);
+      const [sent, setSent] = useState(false);
       const [error, setError] = useState(null);
 
-      const signIn = async () => {
-        setSigningIn(true); setError(null);
-        const { error } = await sb.auth.signInWithOAuth({
-          provider: 'google',
-          options: { redirectTo: window.location.origin + window.location.pathname },
+      const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+      const sendLink = async () => {
+        if (!isValidEmail(email)) {
+          setError('That doesn\'t look like a valid email');
+          return;
+        }
+        setSending(true); setError(null);
+        const { error } = await sb.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            emailRedirectTo: window.location.origin + window.location.pathname,
+            shouldCreateUser: true,
+          },
         });
-        if (error) { setError(error.message); setSigningIn(false); }
+        if (error) {
+          setError(error.message);
+          setSending(false);
+        } else {
+          setSent(true);
+          setSending(false);
+        }
+      };
+
+      const useDifferentEmail = () => {
+        setSent(false); setEmail(''); setError(null);
       };
 
       return (
@@ -167,36 +188,85 @@
 
           <div className="flex-1 flex items-center justify-center px-5">
             <div className="max-w-sm w-full">
-              <div className="mb-8">
-                <div style={{ color: C.muted, fontSize: 10, letterSpacing: 2, fontWeight: 500 }} className="mb-2">
-                  SIGN IN
-                </div>
-                <div className="font-bold tracking-tight mb-3" style={{ fontSize: 32, lineHeight: 1.1 }}>
-                  Your queue,<br />across every device.
-                </div>
-                <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.5 }}>
-                  One login. Add a problem on your laptop at lunch, review it on your phone tomorrow morning. Same queue, everywhere.
-                </div>
-              </div>
+              {!sent ? (
+                <>
+                  <div className="mb-8">
+                    <div style={{ color: C.muted, fontSize: 10, letterSpacing: 2, fontWeight: 500 }} className="mb-2">
+                      SIGN IN
+                    </div>
+                    <div className="font-bold tracking-tight mb-3" style={{ fontSize: 32, lineHeight: 1.1 }}>
+                      Your queue,<br />across every device.
+                    </div>
+                    <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.5 }}>
+                      Enter your email and we'll send you a sign-in link. No password to remember.
+                    </div>
+                  </div>
 
-              <button onClick={signIn} disabled={signingIn}
-                className="w-full py-3.5 rounded-lg font-semibold transition flex items-center justify-center gap-2"
-                style={{
-                  background: C.primary, color: C.onPrimary, fontSize: 15,
-                  opacity: signingIn ? 0.6 : 1, cursor: signingIn ? 'wait' : 'pointer',
-                }}>
-                {signingIn ? 'Redirecting…' : 'Continue with Google'}
-              </button>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') sendLink(); }}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    inputMode="email"
+                    className="w-full px-4 py-3 rounded-lg outline-none transition mb-3"
+                    style={{
+                      background: C.surface, border: `1px solid ${C.border}`,
+                      color: C.text, fontSize: 15,
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = C.primary)}
+                    onBlur={(e) => (e.target.style.borderColor = C.border)}
+                  />
 
-              {error && (
-                <div className="mt-3 rounded-lg p-3" style={{ background: C.surface, border: `1px solid ${C.danger}` }}>
-                  <div style={{ fontSize: 12, color: C.danger }}>Sign-in failed: {error}</div>
-                </div>
+                  <button onClick={sendLink} disabled={sending || !email}
+                    className="w-full py-3.5 rounded-lg font-semibold transition"
+                    style={{
+                      background: sending || !email ? C.tabsBg : C.primary,
+                      color: sending || !email ? C.muted : C.onPrimary,
+                      fontSize: 15,
+                      cursor: sending ? 'wait' : (!email ? 'not-allowed' : 'pointer'),
+                    }}>
+                    {sending ? 'Sending…' : 'Send sign-in link'}
+                  </button>
+
+                  {error && (
+                    <div className="mt-3 rounded-lg p-3" style={{ background: C.surface, border: `1px solid ${C.danger}` }}>
+                      <div style={{ fontSize: 12, color: C.danger }}>{error}</div>
+                    </div>
+                  )}
+
+                  <div className="mt-6" style={{ fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
+                    We only store your problem list and email. No tracking, no ads, no analytics.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <div style={{ color: C.muted, fontSize: 10, letterSpacing: 2, fontWeight: 500 }} className="mb-2">
+                      LINK SENT
+                    </div>
+                    <div className="font-bold tracking-tight mb-3" style={{ fontSize: 28, lineHeight: 1.1 }}>
+                      Check your email.
+                    </div>
+                    <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.5 }}>
+                      A sign-in link is on the way to <span className="font-mono" style={{ color: C.text }}>{email}</span>. Open it on this device to finish signing in. The link expires in an hour.
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+                    <div style={{ color: C.muted, fontSize: 11, lineHeight: 1.5 }}>
+                      Not seeing it? Check spam, or wait a minute — Supabase's free tier can throttle. If it never arrives, use a different email.
+                    </div>
+                  </div>
+
+                  <button onClick={useDifferentEmail}
+                    className="w-full py-2.5 rounded-lg font-medium transition"
+                    style={{ background: C.tabsBg, color: C.text, fontSize: 13 }}>
+                    Use a different email
+                  </button>
+                </>
               )}
-
-              <div className="mt-6" style={{ fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
-                We only store your problem list and email. No tracking, no ads, no analytics.
-              </div>
             </div>
           </div>
         </div>
