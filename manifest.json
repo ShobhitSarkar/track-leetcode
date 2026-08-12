@@ -1,0 +1,18 @@
+{
+  "name": "Recall — Interval Prep",
+  "short_name": "Recall",
+  "description": "Spaced-repetition tracker for LeetCode interview prep",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F3EE",
+  "theme_color": "#F4F3EE",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
