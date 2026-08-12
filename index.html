@@ -16,7 +16,6 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     * { box-sizing: border-box; }
@@ -33,7 +32,8 @@
 <body>
   <div id="root"></div>
 
-  <script type="text/babel" data-presets="react">
+  <script type="text/babel" data-presets="react" data-type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     // ============================================================
     // CONFIG — replace with your own Supabase creds.
     // Both are safe to expose publicly (anon key is client-side by design).
@@ -44,7 +44,28 @@
     // ============================================================
 
     const { useState, useEffect } = React;
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let sb;
+    try {
+      sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (err) {
+      showFatal('Failed to init Supabase: ' + err.message);
+    }
+
+    function showFatal(msg) {
+      document.getElementById('root').innerHTML = `
+        <div style="padding: 24px; max-width: 500px; margin: 40px auto; font-family: ui-sans-serif, system-ui;">
+          <div style="color: #8B2E1E; font-weight: 600; margin-bottom: 8px;">App failed to load</div>
+          <div style="color: #7A7570; font-size: 13px; margin-bottom: 16px;">${msg}</div>
+          <div style="color: #B8B0A3; font-size: 11px;">Check the browser console for details. Common causes: bad Supabase URL/key, CDN blocked by network, or a script that failed to load.</div>
+        </div>
+      `;
+    }
+
+    // Catch anything that goes uncaught
+    window.addEventListener('error', (e) => {
+      console.error('Uncaught error:', e.error || e.message);
+    });
 
     const RATING_INTERVALS = { 1: 30, 2: 12, 3: 5, 4: 2 };
     const RATING_LABELS = {
@@ -685,8 +706,14 @@
       );
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    if (sb) {
+      try {
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+      } catch (err) {
+        showFatal('Failed to render app: ' + err.message);
+      }
+    }
   </script>
 </body>
 </html>
