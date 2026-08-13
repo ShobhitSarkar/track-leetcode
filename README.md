@@ -130,8 +130,23 @@ Everything's in `index.html`:
 - `RATING_INTERVALS` — days per rating (currently 30/12/5/2)
 - `RATING_LABELS` — rename the ratings
 - `COMMON_PATTERNS` — pattern chips shown when adding
-- `THEMES` — color palette for light and dark
 - `leetcodeUrlFor` — how a problem link is guessed from the name
+
+The look lives in the `<style>` block in the `<head>`. Colors, radii, shadows and easing
+are CSS custom properties on `:root` (light) and `:root[data-theme="dark"]` (dark), so
+retheming the whole app means editing those two blocks and nothing else.
+
+## Layout
+
+Below 1024px the app is the phone layout: sticky header, big due count, segmented
+Today / Add / All tabs, one column. At 1024px and up a left rail takes over identity,
+the count and navigation, and the rest of the width goes to content.
+
+Column counts come from `@container` queries on `.view-area`, not media queries, so the
+grids measure the actual content width and stay correct whether or not the rail is
+present. Review cards cap at two columns on purpose: they hold code and a rating grid, so
+a third column costs more in readability than it gains. Change the breakpoints on
+`.grid-review`, `.grid-rows` and `.grid-add` to taste.
 
 ## Flashcards
 
