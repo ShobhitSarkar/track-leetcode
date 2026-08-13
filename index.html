@@ -86,6 +86,7 @@
       --hatch: rgba(26, 26, 29, 0.045);
       --skeleton: rgba(26, 26, 29, 0.06);
       --skeleton-sheen: rgba(255, 255, 255, 0.55);
+      --scrim: rgba(52, 44, 30, 0.24);
     }
 
     :root[data-theme="dark"] {
@@ -122,6 +123,7 @@
       --hatch: rgba(255, 255, 255, 0.035);
       --skeleton: rgba(255, 255, 255, 0.05);
       --skeleton-sheen: rgba(255, 255, 255, 0.07);
+      --scrim: rgba(0, 0, 0, 0.52);
     }
 
     :root {
@@ -201,6 +203,17 @@
       from { opacity: 0; transform: translateY(14px) scale(0.97); }
       to   { opacity: 1; transform: none; }
     }
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(14px) scale(0.965); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes modal-out {
+      from { opacity: 1; transform: none; }
+      to   { opacity: 0; transform: translateY(6px) scale(0.985); }
+    }
+    @keyframes sheet-in  { from { transform: translateY(100%); } to { transform: none; } }
+    @keyframes sheet-out { from { transform: none; } to { transform: translateY(100%); } }
     @keyframes shimmer {
       from { background-position: -180% 0; }
       to   { background-position: 180% 0; }
@@ -285,7 +298,7 @@
       border-right: 1px solid var(--border);
     }
     @media (min-width: 1024px) { .rail { display: flex; } }
-    .rail .hero-num { font-size: 62px; }
+    .rail .hero-num { font-size: 70px; }
 
     .rail-nav { display: flex; flex-direction: column; gap: 3px; }
     .rail-nav-btn {
@@ -330,9 +343,10 @@
     }
     .rail-user { display: flex; align-items: center; gap: 9px; min-width: 0; }
 
-    .view-head { margin-bottom: 22px; }
-    .view-title { font-family: var(--font-display); font-size: 31px; line-height: 1.14; letter-spacing: -0.01em; }
-    .view-sub { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
+    .view-head { margin-bottom: 26px; }
+    .view-title { font-family: var(--font-display); font-size: 44px; line-height: 1.08; letter-spacing: -0.015em; }
+    @media (min-width: 1400px) { .view-title { font-size: 50px; } }
+    .view-sub { color: var(--muted); font-size: 14.5px; margin: 8px 0 0; }
 
     /* Split sign-in. A login form stretched across a desktop is worse, not
        better, so the width goes to a brand panel and the form stays readable. */
@@ -390,7 +404,7 @@
     }
     .wordmark-name {
       font-family: var(--font-display);
-      font-size: 26px;
+      font-size: 30px;
       line-height: 1;
       letter-spacing: -0.01em;
       color: var(--text);
@@ -666,7 +680,7 @@
        ========================================================================== */
     .hero-num {
       font-family: var(--font-display);
-      font-size: 76px;
+      font-size: 88px;
       line-height: 0.82;
       letter-spacing: -0.015em;
       font-variant-numeric: tabular-nums;
@@ -730,7 +744,7 @@
     @media (hover: hover) {
       .row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
     }
-    .row[data-expanded="true"] { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+    .row[data-open="true"] { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
 
     .row-toggle {
       display: flex;
@@ -749,8 +763,9 @@
       color: var(--faint);
       transition: transform var(--t-base) var(--ease-out), color var(--t-fast) ease;
     }
-    .row-toggle[aria-expanded="true"] .row-chevron { transform: rotate(90deg); color: var(--muted); }
-    @media (hover: hover) { .row-toggle:hover .row-chevron { color: var(--muted); } }
+    @media (hover: hover) {
+      .row-toggle:hover .row-chevron { color: var(--muted); transform: translateX(2px); }
+    }
 
     .row-danger {
       display: inline-flex;
@@ -844,6 +859,87 @@
       background-size: 180% 100%;
       background-repeat: no-repeat;
       animation: shimmer 1.5s linear infinite;
+    }
+
+    /* ==========================================================================
+       Modal
+
+       Rendered through a portal to document.body. It has to be: `.view-area`
+       sets `container-type`, which makes that element a containing block for
+       fixed-position descendants, so a modal rendered in place would be
+       trapped inside the content column instead of covering the viewport.
+       ========================================================================== */
+    .modal-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--scrim);
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+      backdrop-filter: blur(10px) saturate(140%);
+      animation: fade-in 220ms ease both;
+    }
+    .modal-layer[data-leaving="true"] { animation: fade-out 190ms ease both; }
+
+    .modal {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 640px;
+      max-height: min(84vh, 820px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      animation: modal-in 320ms var(--ease-out) both;
+    }
+    .modal-layer[data-leaving="true"] .modal { animation: modal-out 190ms ease both; }
+    @supports (max-height: 84dvh) { .modal { max-height: min(84dvh, 820px); } }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 18px 18px 15px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .modal-body { padding: 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+    .sheet-grip { display: none; }
+
+    /* On a phone a centred dialog floating in the middle reads worse than a
+       sheet that comes up from the thumb, so it becomes one. */
+    @media (max-width: 639px) {
+      .modal-layer { padding: 0; align-items: flex-end; }
+      .modal {
+        max-width: none;
+        max-height: 90vh;
+        border-radius: var(--r-xl) var(--r-xl) 0 0;
+        border-bottom: 0;
+        animation: sheet-in 340ms var(--ease-out) both;
+      }
+      @supports (max-height: 90dvh) { .modal { max-height: 90dvh; } }
+      .modal-layer[data-leaving="true"] .modal { animation: sheet-out 210ms ease both; }
+      .modal-body { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+      .sheet-grip {
+        display: block;
+        width: 38px;
+        height: 4px;
+        flex: none;
+        margin: 9px auto 0;
+        border-radius: 999px;
+        background: var(--border-strong);
+      }
     }
 
     /* ==========================================================================
@@ -984,6 +1080,15 @@
     const problemUrl = (p) => (p.url || '').trim() || leetcodeUrlFor(p.name);
     const hasCard = (p) => Boolean((p.solution || '').trim() || (p.notes || '').trim());
 
+    const dueDescriptor = (p) => {
+      const days = daysBetween(todayStr(), p.next_review);
+      const overdue = days < 0;
+      return {
+        soon: overdue || days === 0,
+        label: overdue ? `${Math.abs(days)}d overdue` : days === 0 ? 'due today' : `in ${days}d`,
+      };
+    };
+
     const THEME_KEY = 'recall_theme_v1';
     const systemTheme = () => (
       window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -1042,6 +1147,7 @@
     );
     const IconLayers = (p) => <Svg {...p}><path d="m12 2.5 9.5 5-9.5 5-9.5-5 9.5-5zM2.5 12.5 12 17.5l9.5-5M2.5 17.5 12 22.5l9.5-5" /></Svg>;
     const IconAlert = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5M12 16.2v.1" /></Svg>;
+    const IconX = (p) => <Svg {...p}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
     const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" /></Svg>;
 
     const TABS = [
@@ -1109,6 +1215,81 @@
 
       const dismiss = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), []);
       return { toasts, notify, dismiss };
+    }
+
+    // Centred dialog (bottom sheet on phones) for content that would otherwise
+    // expand in place. Owns its own exit animation, so callers just flip the
+    // state that renders it and the close paths all run through `close()`.
+    function Modal({ title, meta, onClose, children }) {
+      const [leaving, setLeaving] = useState(false);
+      const dialogRef = useRef(null);
+      const restoreRef = useRef(null);
+      const closedRef = useRef(false);
+      const titleId = 'modal-title';
+
+      const close = useCallback(() => {
+        if (closedRef.current) return;
+        closedRef.current = true;
+        setLeaving(true);
+        setTimeout(onClose, 200);
+      }, [onClose]);
+
+      // Lock the page behind the dialog, and hand focus back to whatever opened
+      // it on the way out.
+      useEffect(() => {
+        restoreRef.current = document.activeElement;
+        const body = document.body;
+        const prevOverflow = body.style.overflow;
+        const prevPadding = body.style.paddingRight;
+        const gap = window.innerWidth - document.documentElement.clientWidth;
+        body.style.overflow = 'hidden';
+        if (gap > 0) body.style.paddingRight = `${gap}px`;
+        if (dialogRef.current) dialogRef.current.focus();
+        return () => {
+          body.style.overflow = prevOverflow;
+          body.style.paddingRight = prevPadding;
+          const el = restoreRef.current;
+          if (el && typeof el.focus === 'function') el.focus();
+        };
+      }, []);
+
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === 'Escape') { close(); return; }
+          if (e.key !== 'Tab' || !dialogRef.current) return;
+          const focusable = dialogRef.current.querySelectorAll(
+            'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length === 0) return;
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+      }, [close]);
+
+      return ReactDOM.createPortal(
+        <div className="modal-layer" data-leaving={leaving}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}
+            ref={dialogRef} tabIndex={-1}>
+            <div className="sheet-grip" />
+            <div className="modal-head">
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div id={titleId} className="mono modal-title">{title}</div>
+                {meta}
+              </div>
+              <button onClick={close} className="icon-btn" aria-label="Close" style={{ flex: 'none' }}>
+                <IconX size={15} />
+              </button>
+            </div>
+            <div className="modal-body">{children}</div>
+          </div>
+        </div>,
+        document.body
+      );
     }
 
     function ToastLayer({ toasts, onDismiss }) {
@@ -1229,7 +1410,7 @@
       const headline = (
         <>
           <div className="eyebrow" style={{ marginBottom: 10 }}>Sign in</div>
-          <h1 className="display" style={{ fontSize: 40, lineHeight: 1.06, letterSpacing: '-0.015em', margin: '0 0 12px' }}>
+          <h1 className="display" style={{ fontSize: 'clamp(38px, 6vw, 54px)', lineHeight: 1.04, letterSpacing: '-0.015em', margin: '0 0 14px' }}>
             Your queue,<br />across every device.
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
@@ -1283,7 +1464,7 @@
                 <span className="pill pill-success">
                   <IconCheck size={12} /> Link sent
                 </span>
-                <h1 className="display" style={{ fontSize: 36, lineHeight: 1.08, letterSpacing: '-0.015em', margin: '14px 0 12px' }}>
+                <h1 className="display" style={{ fontSize: 42, lineHeight: 1.06, letterSpacing: '-0.015em', margin: '14px 0 12px' }}>
                   Check your email.
                 </h1>
                 <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
@@ -1960,7 +2141,7 @@
 
     function AllView({ problems, onDelete, onSaveCard }) {
       const [confirmDelete, setConfirmDelete] = useState(null);
-      const [expanded, setExpanded] = useState(null);
+      const [openId, setOpenId] = useState(null);
 
       if (problems.length === 0) return (
         <EmptyState icon={<IconLayers size={22} />} title="Empty library"
@@ -1968,70 +2149,83 @@
       );
 
       const sorted = [...problems].sort((a, b) => a.next_review.localeCompare(b.next_review));
+      // Looked up fresh each render rather than held in state, so saving a card
+      // updates the open dialog, and a problem that disappears closes it.
+      const openProblem = problems.find((p) => p.id === openId) || null;
 
       return (
-        <div className="grid-rows">
-          {sorted.map((p, i) => {
-            const daysUntil = daysBetween(todayStr(), p.next_review);
-            const overdue = daysUntil < 0;
-            const dueSoon = overdue || daysUntil === 0;
-            const dueLabel = overdue
-              ? `${Math.abs(daysUntil)}d overdue`
-              : daysUntil === 0 ? 'due today' : `in ${daysUntil}d`;
-            const isOpen = expanded === p.id;
+        <>
+          <div className="grid-rows">
+            {sorted.map((p, i) => {
+              const due = dueDescriptor(p);
 
-            return (
-              <div key={p.id} className="row anim-rise" data-expanded={isOpen}
-                style={{ padding: 12, animationDelay: `${Math.min(i, 10) * 28}ms` }}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <button onClick={() => setExpanded(isOpen ? null : p.id)}
-                      className="row-toggle" aria-expanded={isOpen}>
-                      <IconChevron size={13} className="row-chevron" />
-                      <span className="mono truncate" style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</span>
-                    </button>
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1"
-                      style={{ marginTop: 5, paddingLeft: 21, fontSize: 11, color: 'var(--muted)' }}>
-                      <span>{p.pattern}</span>
-                      <span style={{ color: 'var(--faint)' }}>·</span>
-                      <span className="tnum">{p.history.length}× reviewed</span>
-                      <span style={{ color: 'var(--faint)' }}>·</span>
-                      <span style={{ color: dueSoon ? 'var(--accent)' : 'var(--muted)', fontWeight: dueSoon ? 600 : 400 }}>
-                        {dueLabel}
-                      </span>
-                      {hasCard(p) && (
-                        <span className="pill pill-success" style={{ padding: '1px 7px', fontSize: 10 }}>
-                          <span className="dot" style={{ background: 'var(--success)', width: 4, height: 4 }} />
-                          card
-                        </span>
-                      )}
-                      <ProblemLink problem={p} />
+              return (
+                <div key={p.id} className="row anim-rise" data-open={openId === p.id}
+                  style={{ padding: 12, animationDelay: `${Math.min(i, 10) * 28}ms` }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <button onClick={() => setOpenId(p.id)} className="row-toggle"
+                        aria-haspopup="dialog">
+                        <IconChevron size={13} className="row-chevron" />
+                        <span className="mono truncate" style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</span>
+                      </button>
+                      <div style={{ marginTop: 5, paddingLeft: 21 }}>
+                        <ProblemMeta problem={p} due={due} />
+                      </div>
                     </div>
+                    {confirmDelete === p.id ? (
+                      <div className="flex gap-1.5 anim-fade" style={{ flex: 'none' }}>
+                        <button onClick={() => { onDelete(p.id); setConfirmDelete(null); }} className="btn btn-danger btn-sm">
+                          Delete
+                        </button>
+                        <button onClick={() => setConfirmDelete(null)} className="btn btn-ghost btn-sm">
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelete(p.id)} className="row-danger"
+                        aria-label={`Delete ${p.name}`}>
+                        <IconTrash size={15} />
+                      </button>
+                    )}
                   </div>
-                  {confirmDelete === p.id ? (
-                    <div className="flex gap-1.5 anim-fade" style={{ flex: 'none' }}>
-                      <button onClick={() => { onDelete(p.id); setConfirmDelete(null); }} className="btn btn-danger btn-sm">
-                        Delete
-                      </button>
-                      <button onClick={() => setConfirmDelete(null)} className="btn btn-ghost btn-sm">
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setConfirmDelete(p.id)} className="row-danger"
-                      aria-label={`Delete ${p.name}`}>
-                      <IconTrash size={15} />
-                    </button>
-                  )}
                 </div>
-                {isOpen && (
-                  <div className="anim-fade" style={{ marginTop: 13, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
-                    <CardPanel problem={p} onSave={onSaveCard} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {openProblem && (
+            <Modal title={openProblem.name} onClose={() => setOpenId(null)}
+              meta={<div style={{ marginTop: 7 }}>
+                <ProblemMeta problem={openProblem} due={dueDescriptor(openProblem)} />
+              </div>}>
+              <CardPanel problem={openProblem} onSave={onSaveCard} />
+            </Modal>
+          )}
+        </>
+      );
+    }
+
+    // Pattern / review count / due state / link. Shared by the library row and the
+    // dialog header so the two can never drift apart.
+    function ProblemMeta({ problem, due }) {
+      return (
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-1"
+          style={{ fontSize: 11, color: 'var(--muted)' }}>
+          <span>{problem.pattern}</span>
+          <span style={{ color: 'var(--faint)' }}>·</span>
+          <span className="tnum">{problem.history.length}× reviewed</span>
+          <span style={{ color: 'var(--faint)' }}>·</span>
+          <span style={{ color: due.soon ? 'var(--accent)' : 'var(--muted)', fontWeight: due.soon ? 600 : 400 }}>
+            {due.label}
+          </span>
+          {hasCard(problem) && (
+            <span className="pill pill-success" style={{ padding: '1px 7px', fontSize: 10 }}>
+              <span className="dot" style={{ background: 'var(--success)', width: 4, height: 4 }} />
+              card
+            </span>
+          )}
+          <ProblemLink problem={problem} />
         </div>
       );
     }
@@ -2048,7 +2242,7 @@
               {icon}
             </div>
           )}
-          <div className="display" style={{ fontSize: 23, lineHeight: 1.2, marginBottom: 8 }}>{title}</div>
+          <div className="display" style={{ fontSize: 29, lineHeight: 1.16, marginBottom: 9 }}>{title}</div>
           <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.65, margin: '0 auto', maxWidth: 320 }}>{body}</p>
           {cta && onCta && (
             <button onClick={onCta} className="btn btn-primary" style={{ marginTop: 20 }}>
