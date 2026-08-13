@@ -155,7 +155,8 @@ problem itself. When it comes up for review, the card stays face down behind a
 **Reveal solution** button so you attempt recall first, then check yourself, then rate.
 
 - Fill any of it in when adding a problem, or later from the **All** tab (click a problem
-  to expand it).
+  to open its card in a dialog; on a phone it comes up as a sheet). Close it with the ✕,
+  Escape, or by clicking outside.
 - The link is optional. Leave it blank and the app guesses the LeetCode URL from the
   problem name, which works for standard LeetCode titles. Set it explicitly for anything
   else and yours always wins.
