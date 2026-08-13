@@ -224,9 +224,140 @@
 
     /* ==========================================================================
        Layout shell
+
+       Under 1024px: a stacked phone layout — sticky header, hero counter,
+       segmented tabs, one column.
+       At 1024px and up: a persistent left rail holds the identity, the counter
+       and the navigation, and the whole remaining width belongs to content.
        ========================================================================== */
     .shell { min-height: 100vh; min-height: 100dvh; background: var(--bg); }
-    .wrap { width: 100%; max-width: 34rem; margin: 0 auto; padding: 0 20px; }
+    .layout { display: flex; align-items: flex-start; min-height: 100vh; min-height: 100dvh; background: var(--bg); }
+    .main { flex: 1 1 auto; min-width: 0; }
+
+    .content {
+      width: 100%;
+      max-width: 34rem;
+      margin: 0 auto;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    @media (min-width: 640px) { .content { max-width: 40rem; } }
+    @media (min-width: 840px) { .content { max-width: 54rem; padding-left: 28px; padding-right: 28px; } }
+    @media (min-width: 1024px) { .content { max-width: 1560px; padding-left: 40px; padding-right: 40px; } }
+
+    /* Content grids size themselves against this element, not the viewport, so
+       the column count stays right whether or not the rail is taking 272px. */
+    .view-area { container-type: inline-size; }
+
+    /* Two columns is the ceiling for review cards. They hold code and a rating
+       grid, so a third column costs readability, and every extra column makes
+       the ragged bottom edge of a mixed-height card grid worse. */
+    .grid-review {
+      display: grid;
+      gap: 14px;
+      align-items: start;
+      grid-template-columns: minmax(0, 1fr);
+      max-width: 1200px;
+    }
+    @container (min-width: 760px) { .grid-review { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+    .grid-rows { display: grid; gap: 8px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+    @container (min-width: 700px)  { .grid-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @container (min-width: 1200px) { .grid-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+    /* A form does not benefit from unlimited width, so it splits into two
+       columns and then stops growing. */
+    .grid-add { display: grid; gap: 22px; align-items: start; grid-template-columns: minmax(0, 1fr); max-width: 1080px; }
+    @container (min-width: 860px) { .grid-add { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; } }
+
+    .rail {
+      display: none;
+      flex: none;
+      width: 272px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      height: 100dvh;
+      flex-direction: column;
+      gap: 24px;
+      padding: 26px 22px calc(22px + env(safe-area-inset-bottom));
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+    }
+    @media (min-width: 1024px) { .rail { display: flex; } }
+    .rail .hero-num { font-size: 62px; }
+
+    .rail-nav { display: flex; flex-direction: column; gap: 3px; }
+    .rail-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: var(--r-md);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13.5px;
+      font-weight: 500;
+      text-align: left;
+      transition: background var(--t-fast) ease, color var(--t-fast) ease;
+    }
+    @media (hover: hover) { .rail-nav-btn:hover { background: var(--hover); color: var(--text); } }
+    .rail-nav-btn[aria-current="page"] {
+      background: var(--tabs-bg);
+      color: var(--text);
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+    }
+    .rail-nav-count {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-variant-numeric: tabular-nums;
+      color: var(--faint);
+    }
+    .rail-nav-btn[aria-current="page"] .rail-nav-count { color: var(--muted); }
+    .rail-nav-count[data-due="true"] { color: var(--accent); font-weight: 600; }
+
+    .rail-foot {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+    .rail-user { display: flex; align-items: center; gap: 9px; min-width: 0; }
+
+    .view-head { margin-bottom: 22px; }
+    .view-title { font-family: var(--font-display); font-size: 31px; line-height: 1.14; letter-spacing: -0.01em; }
+    .view-sub { color: var(--muted); font-size: 13.5px; margin: 6px 0 0; }
+
+    /* Split sign-in. A login form stretched across a desktop is worse, not
+       better, so the width goes to a brand panel and the form stays readable. */
+    .auth-brand { display: none; }
+    @media (min-width: 1024px) {
+      .auth-split { display: flex; min-height: 100vh; min-height: 100dvh; }
+      .auth-brand {
+        display: flex;
+        flex: 1 1 50%;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 40px;
+        padding: 44px;
+        background-color: var(--surface);
+        background-image: repeating-linear-gradient(45deg, var(--hatch) 0 1.5px, transparent 1.5px 11px);
+        border-right: 1px solid var(--border);
+      }
+      .auth-pane {
+        flex: 1 1 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 44px;
+      }
+    }
 
     .app-header {
       position: sticky;
@@ -281,6 +412,7 @@
     }
 
     .page-pad { padding-top: 28px; padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+    @media (min-width: 1024px) { .page-pad { padding-top: 38px; padding-bottom: 64px; } }
 
     /* ==========================================================================
        Buttons
@@ -576,13 +708,11 @@
        ========================================================================== */
     .review-slot {
       overflow: hidden;
-      padding-bottom: 12px;
       transition: max-height 380ms var(--ease-out), opacity 220ms ease,
-                  transform 300ms var(--ease-out), padding-bottom 380ms var(--ease-out);
+                  transform 300ms var(--ease-out);
     }
     .review-slot[data-leaving="true"] {
       max-height: 0 !important;
-      padding-bottom: 0;
       opacity: 0;
       transform: scale(0.97) translateY(-6px);
     }
@@ -765,6 +895,11 @@
     .stack-5 > * + * { margin-top: 20px; }
     .divider { height: 1px; background: var(--border); border: 0; margin: 0; }
     .breathe { animation: soft-pulse 1.6s ease-in-out infinite; }
+
+    /* Spans both form columns, but a 1000px-wide submit button looks absurd, so
+       it stops stretching once the form has actually split in two. */
+    .add-submit { grid-column: 1 / -1; }
+    @container (min-width: 860px) { .add-submit { justify-self: start; width: auto; min-width: 230px; } }
   </style>
 </head>
 <body>
@@ -909,6 +1044,47 @@
     const IconAlert = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5M12 16.2v.1" /></Svg>;
     const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" /></Svg>;
 
+    const TABS = [
+      { key: 'today', label: 'Today', Icon: IconInbox },
+      { key: 'add', label: 'Add', Icon: IconPlus },
+      { key: 'all', label: 'All', Icon: IconLayers },
+    ];
+
+    // The rail already carries the due count on desktop, so these headings say
+    // what the column is rather than repeating the number back.
+    const VIEW_HEADINGS = {
+      today: {
+        title: 'Due today',
+        sub: (s) => (s.due === 0
+          ? 'Nothing to review right now.'
+          : 'Try to recall each one before revealing the card.'),
+      },
+      add: {
+        title: 'Add a problem',
+        sub: () => 'Log something you just solved so it comes back at the right time.',
+      },
+      all: {
+        title: 'Library',
+        sub: (s) => `${s.total} ${s.total === 1 ? 'problem' : 'problems'} tracked.`,
+      },
+    };
+
+    // The phone layout and the desktop layout are different enough in structure
+    // (a rail that owns navigation vs. a header plus segmented tabs) that
+    // rendering one or the other beats trying to reshape a single tree in CSS.
+    const WIDE = '(min-width: 1024px)';
+    function useMediaQuery(query) {
+      const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+      useEffect(() => {
+        const mql = window.matchMedia(query);
+        const onChange = (e) => setMatches(e.matches);
+        setMatches(mql.matches);
+        mql.addEventListener('change', onChange);
+        return () => mql.removeEventListener('change', onChange);
+      }, [query]);
+      return matches;
+    }
+
     // ============================================================
     // Toasts — replace blocking window.alert() for failures, and give
     // silent writes (rate / save / delete) a visible confirmation.
@@ -1016,6 +1192,7 @@
     // Auth
     // ============================================================
     function AuthScreen({ theme, onToggleTheme }) {
+      const isWide = useMediaQuery(WIDE);
       const [email, setEmail] = useState('');
       const [sending, setSending] = useState(false);
       const [sent, setSent] = useState(false);
@@ -1049,31 +1226,30 @@
         setSent(false); setEmail(''); setError(null);
       };
 
-      return (
-        <div className="shell flex flex-col">
-          <header className="app-header">
-            <div className="wrap app-header-inner">
-              <Wordmark />
-              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-            </div>
-          </header>
+      const headline = (
+        <>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Sign in</div>
+          <h1 className="display" style={{ fontSize: 40, lineHeight: 1.06, letterSpacing: '-0.015em', margin: '0 0 12px' }}>
+            Your queue,<br />across every device.
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            Enter your email and we'll send you a sign-in link. No password to remember.
+          </p>
+        </>
+      );
+      const finePrint = (
+        <p style={{ fontSize: 11.5, color: 'var(--faint)', lineHeight: 1.6, margin: 0 }}>
+          We only store your problem list and email. No tracking, no ads, no analytics.
+        </p>
+      );
 
-          <div className="flex-1 flex items-center justify-center wrap"
-            style={{ paddingTop: 32, paddingBottom: 'calc(48px + env(safe-area-inset-bottom))' }}>
-            <div style={{ width: '100%', maxWidth: 380 }}>
-              {!sent ? (
-                <div className="anim-rise">
-                  <div style={{ marginBottom: 28 }}>
-                    <div className="eyebrow" style={{ marginBottom: 10 }}>Sign in</div>
-                    <h1 className="display" style={{ fontSize: 40, lineHeight: 1.06, letterSpacing: '-0.015em', margin: '0 0 12px' }}>
-                      Your queue,<br />across every device.
-                    </h1>
-                    <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                      Enter your email and we'll send you a sign-in link. No password to remember.
-                    </p>
-                  </div>
+      const panel = (
+        <div style={{ width: '100%', maxWidth: 380 }}>
+          {!sent ? (
+            <div className="anim-rise">
+              {!isWide && <div style={{ marginBottom: 28 }}>{headline}</div>}
 
-                  <div className="stack-3">
+              <div className="stack-3">
                     <input
                       type="email"
                       value={email}
@@ -1099,39 +1275,71 @@
                     </div>
                   )}
 
-                  <p style={{ marginTop: 26, fontSize: 11.5, color: 'var(--faint)', lineHeight: 1.6 }}>
-                    We only store your problem list and email. No tracking, no ads, no analytics.
-                  </p>
-                </div>
-              ) : (
-                <div className="anim-rise">
-                  <div style={{ marginBottom: 22 }}>
-                    <span className="pill pill-success" style={{ marginBottom: 14 }}>
-                      <IconCheck size={12} /> Link sent
-                    </span>
-                    <h1 className="display" style={{ fontSize: 36, lineHeight: 1.08, letterSpacing: '-0.015em', margin: '14px 0 12px' }}>
-                      Check your email.
-                    </h1>
-                    <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                      A sign-in link is on the way to{' '}
-                      <span className="mono" style={{ color: 'var(--text)', fontSize: 13 }}>{email}</span>.
-                      {' '}Open it on this device to finish signing in. The link expires in an hour.
-                    </p>
-                  </div>
-
-                  <div className="inset" style={{ padding: 14, marginBottom: 14 }}>
-                    <p style={{ color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.6, margin: 0 }}>
-                      Not seeing it? Check spam, or wait a minute — Supabase's free tier can throttle.
-                      If it never arrives, use a different email.
-                    </p>
-                  </div>
-
-                  <button onClick={useDifferentEmail} className="btn btn-ghost" style={{ width: '100%' }}>
-                    Use a different email
-                  </button>
-                </div>
-              )}
+              {!isWide && <div style={{ marginTop: 26 }}>{finePrint}</div>}
             </div>
+          ) : (
+            <div className="anim-rise">
+              <div style={{ marginBottom: 22 }}>
+                <span className="pill pill-success">
+                  <IconCheck size={12} /> Link sent
+                </span>
+                <h1 className="display" style={{ fontSize: 36, lineHeight: 1.08, letterSpacing: '-0.015em', margin: '14px 0 12px' }}>
+                  Check your email.
+                </h1>
+                <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                  A sign-in link is on the way to{' '}
+                  <span className="mono" style={{ color: 'var(--text)', fontSize: 13 }}>{email}</span>.
+                  {' '}Open it on this device to finish signing in. The link expires in an hour.
+                </p>
+              </div>
+
+              <div className="inset" style={{ padding: 14, marginBottom: 14 }}>
+                <p style={{ color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.6, margin: 0 }}>
+                  Not seeing it? Check spam, or wait a minute — Supabase's free tier can throttle.
+                  If it never arrives, use a different email.
+                </p>
+              </div>
+
+              <button onClick={useDifferentEmail} className="btn btn-ghost" style={{ width: '100%' }}>
+                Use a different email
+              </button>
+            </div>
+          )}
+        </div>
+      );
+
+      if (isWide) {
+        return (
+          <div className="auth-split">
+            <div className="auth-brand">
+              <Wordmark />
+              <div style={{ maxWidth: 460 }}>{headline}</div>
+              {finePrint}
+            </div>
+            <div className="auth-pane">
+              <div style={{ width: '100%', maxWidth: 380 }}>
+                <div className="flex justify-end" style={{ marginBottom: 26 }}>
+                  <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                </div>
+                {panel}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="shell flex flex-col">
+          <header className="app-header">
+            <div className="content app-header-inner">
+              <Wordmark />
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            </div>
+          </header>
+
+          <div className="flex-1 flex items-center justify-center content"
+            style={{ paddingTop: 32, paddingBottom: 'calc(48px + env(safe-area-inset-bottom))' }}>
+            {panel}
           </div>
         </div>
       );
@@ -1141,6 +1349,7 @@
     // Main
     // ============================================================
     function MainApp({ user, theme, onToggleTheme }) {
+      const isWide = useMediaQuery(WIDE);
       const [problems, setProblems] = useState([]);
       const [view, setView] = useState('today');
       const [loading, setLoading] = useState(true);
@@ -1257,17 +1466,113 @@
         .sort((a, b) => a.next_review.localeCompare(b.next_review));
       const stats = { total: problems.length, due: dueToday.length };
 
-      const TABS = [
-        { key: 'today', label: 'Today' },
-        { key: 'add', label: 'Add' },
-        { key: 'all', label: 'All' },
-      ];
       const activeIndex = TABS.findIndex((t) => t.key === view);
+
+      const hero = (
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>Today</div>
+          <div className="flex items-end gap-3.5" style={{ flexWrap: 'wrap' }}>
+            <span className="hero-num" data-due={stats.due > 0}>{stats.due}</span>
+            <div style={{ paddingBottom: 4 }}>
+              <div style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.3 }}>
+                {stats.due === 1 ? 'problem' : 'problems'} to review
+              </div>
+              {stats.due === 0 && stats.total > 0 && (
+                <span className="pill pill-success" style={{ marginTop: 7 }}>
+                  <IconCheck size={11} /> all clear
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+
+      const views = (
+        <div className="view-area">
+          {view === 'today' && (
+            <TodayView due={dueToday} onRate={rateProblem} onSaveCard={saveCard}
+              hasProblems={problems.length > 0} onGoAdd={() => setView('add')} />
+          )}
+          {view === 'add' && <AddView onAdd={addProblem} />}
+          {view === 'all' && (
+            <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} />
+          )}
+        </div>
+      );
+
+      const errorBlock = (
+        <div className="panel anim-fade" style={{ padding: 16, maxWidth: 520, borderColor: 'var(--danger)', background: 'var(--danger-soft)' }}>
+          <div className="flex items-start gap-2" style={{ marginBottom: 12 }}>
+            <IconAlert size={15} style={{ color: 'var(--danger)', marginTop: 1 }} />
+            <div style={{ color: 'var(--danger)', fontSize: 13, lineHeight: 1.5 }}>
+              Couldn't load your problems: {error}
+            </div>
+          </div>
+          <button onClick={fetchProblems} className="btn btn-primary btn-sm">Retry</button>
+        </div>
+      );
+
+      // Desktop: the rail owns identity, the counter and navigation, so the whole
+      // content column is free for problems.
+      if (isWide) {
+        const head = VIEW_HEADINGS[view];
+        return (
+          <div className="layout">
+            <aside className="rail">
+              <Wordmark />
+              {loading ? <RailHeroSkeleton /> : hero}
+              <nav className="rail-nav" aria-label="Views">
+                {TABS.map((tab) => {
+                  const count = tab.key === 'today' ? stats.due : tab.key === 'all' ? stats.total : null;
+                  return (
+                    <button key={tab.key} onClick={() => setView(tab.key)} className="rail-nav-btn"
+                      aria-current={view === tab.key ? 'page' : undefined}>
+                      <tab.Icon size={15} />
+                      {tab.label}
+                      {count !== null && (
+                        <span className="rail-nav-count" data-due={tab.key === 'today' && count > 0}>{count}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+              <div className="rail-foot">
+                <div className="rail-user">
+                  <span className="avatar">{(user.email || '?').charAt(0)}</span>
+                  <span className="truncate" style={{ fontSize: 12, color: 'var(--muted)' }}>{user.email}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                  <button onClick={signOut} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                    <IconSignOut size={14} /> Sign out
+                  </button>
+                </div>
+              </div>
+            </aside>
+
+            <div className="main">
+              <main className="content page-pad">
+                {loading ? <LoadingState wide /> : error ? errorBlock : (
+                  <>
+                    <div className="view-head anim-rise">
+                      <h1 className="view-title">{head.title}</h1>
+                      <p className="view-sub">{head.sub(stats)}</p>
+                    </div>
+                    {views}
+                  </>
+                )}
+              </main>
+            </div>
+
+            <ToastLayer toasts={toasts} onDismiss={dismiss} />
+          </div>
+        );
+      }
 
       return (
         <div className="shell">
           <header className="app-header" data-scrolled={scrolled}>
-            <div className="wrap app-header-inner">
+            <div className="content app-header-inner">
               <Wordmark />
               <div className="flex items-center gap-2" style={{ position: 'relative' }} ref={menuRef}>
                 <span className="pill mono tnum" style={{ fontSize: 10.5 }}>{stats.total} tracked</span>
@@ -1292,37 +1597,10 @@
             </div>
           </header>
 
-          <main className="wrap page-pad">
-            {loading ? (
-              <LoadingState />
-            ) : error ? (
-              <div className="panel anim-fade" style={{ padding: 16, borderColor: 'var(--danger)', background: 'var(--danger-soft)' }}>
-                <div className="flex items-start gap-2" style={{ marginBottom: 12 }}>
-                  <IconAlert size={15} style={{ color: 'var(--danger)', marginTop: 1 }} />
-                  <div style={{ color: 'var(--danger)', fontSize: 13, lineHeight: 1.5 }}>
-                    Couldn't load your problems: {error}
-                  </div>
-                </div>
-                <button onClick={fetchProblems} className="btn btn-primary btn-sm">Retry</button>
-              </div>
-            ) : (
+          <main className="content page-pad">
+            {loading ? <LoadingState /> : error ? errorBlock : (
               <>
-                <section className="anim-rise" style={{ marginBottom: 26 }}>
-                  <div className="eyebrow" style={{ marginBottom: 12 }}>Today</div>
-                  <div className="flex items-end gap-3.5" style={{ flexWrap: 'wrap' }}>
-                    <span className="hero-num" data-due={stats.due > 0}>{stats.due}</span>
-                    <div style={{ paddingBottom: 4 }}>
-                      <div style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.3 }}>
-                        {stats.due === 1 ? 'problem' : 'problems'} to review
-                      </div>
-                      {stats.due === 0 && stats.total > 0 && (
-                        <span className="pill pill-success" style={{ marginTop: 7 }}>
-                          <IconCheck size={11} /> all clear
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </section>
+                <section className="anim-rise" style={{ marginBottom: 26 }}>{hero}</section>
 
                 <div className="seg anim-rise" role="tablist" aria-label="Views" style={{ marginBottom: 22, animationDelay: '40ms' }}>
                   <div className="seg-thumb" style={{ transform: `translateX(${Math.max(activeIndex, 0) * 100}%)` }} />
@@ -1334,14 +1612,7 @@
                   ))}
                 </div>
 
-                {view === 'today' && (
-                  <TodayView due={dueToday} onRate={rateProblem} onSaveCard={saveCard}
-                    hasProblems={problems.length > 0} onGoAdd={() => setView('add')} />
-                )}
-                {view === 'add' && <AddView onAdd={addProblem} />}
-                {view === 'all' && (
-                  <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} />
-                )}
+                {views}
               </>
             )}
           </main>
@@ -1353,18 +1624,28 @@
 
     // Skeletons in the shape of the real content, so the first paint after load is a
     // refinement of what is already on screen rather than a jump from a text label.
-    function LoadingState() {
+    function LoadingState({ wide }) {
+      const cards = wide ? [0, 1, 2, 3, 4, 5] : [0, 1, 2];
       return (
-        <div className="anim-fade" aria-busy="true" aria-label="Loading problems">
-          <div style={{ marginBottom: 26 }}>
-            <div className="sk" style={{ width: 54, height: 10, marginBottom: 14 }} />
-            <div className="sk" style={{ width: 168, height: 58, borderRadius: 10 }} />
-          </div>
-          <div className="sk" style={{ width: '100%', height: 46, borderRadius: 14, marginBottom: 22 }} />
-          <div className="stack-3">
-            {[0, 1, 2].map((i) => (
+        <div className="anim-fade view-area" aria-busy="true" aria-label="Loading problems">
+          {wide ? (
+            <div className="view-head">
+              <div className="sk" style={{ width: 176, height: 28, borderRadius: 8, marginBottom: 10 }} />
+              <div className="sk" style={{ width: 280, height: 12 }} />
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: 26 }}>
+                <div className="sk" style={{ width: 54, height: 10, marginBottom: 14 }} />
+                <div className="sk" style={{ width: 168, height: 58, borderRadius: 10 }} />
+              </div>
+              <div className="sk" style={{ width: '100%', height: 46, borderRadius: 14, marginBottom: 22 }} />
+            </>
+          )}
+          <div className="grid-review">
+            {cards.map((i) => (
               <div key={i} className="card" style={{ padding: 20 }}>
-                <div className="sk" style={{ width: `${58 - i * 9}%`, height: 15, marginBottom: 12 }} />
+                <div className="sk" style={{ width: `${58 + (i % 3) * 11}%`, height: 15, marginBottom: 12 }} />
                 <div className="flex gap-2" style={{ marginBottom: 18 }}>
                   <div className="sk" style={{ width: 74, height: 18, borderRadius: 999 }} />
                   <div className="sk" style={{ width: 58, height: 18, borderRadius: 999 }} />
@@ -1373,6 +1654,15 @@
               </div>
             ))}
           </div>
+        </div>
+      );
+    }
+
+    function RailHeroSkeleton() {
+      return (
+        <div aria-hidden="true">
+          <div className="sk" style={{ width: 46, height: 10, marginBottom: 14 }} />
+          <div className="sk" style={{ width: 132, height: 50, borderRadius: 10 }} />
         </div>
       );
     }
@@ -1389,7 +1679,7 @@
           cta="Add a problem" onCta={onGoAdd} />
       );
       return (
-        <div>
+        <div className="grid-review">
           {due.map((p, i) => (
             <ReviewCard key={p.id} problem={p} index={i} onRate={onRate} onSaveCard={onSaveCard} />
           ))}
@@ -1612,7 +1902,8 @@
       };
 
       return (
-        <div className="stack-5 anim-rise">
+        <div className="grid-add anim-rise">
+          <div className="stack-5">
           <div>
             <label className="field-label">Problem name</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
@@ -1641,6 +1932,7 @@
               ))}
             </div>
           </div>
+          </div>
 
           <div className="panel" style={{ padding: 16 }}>
             <div className="flex items-start gap-2" style={{ marginBottom: 14 }}>
@@ -1659,7 +1951,7 @@
             </div>
           </div>
 
-          <button onClick={submit} disabled={!canSubmit} className="btn btn-primary btn-lg">
+          <button onClick={submit} disabled={!canSubmit} className="btn btn-primary btn-lg add-submit">
             <IconPlus size={16} /> Add to tracker
           </button>
         </div>
@@ -1678,7 +1970,7 @@
       const sorted = [...problems].sort((a, b) => a.next_review.localeCompare(b.next_review));
 
       return (
-        <div className="stack-2">
+        <div className="grid-rows">
           {sorted.map((p, i) => {
             const daysUntil = daysBetween(todayStr(), p.next_review);
             const overdue = daysUntil < 0;
