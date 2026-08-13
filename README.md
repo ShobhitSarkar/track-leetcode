@@ -130,8 +130,11 @@ Everything's in `index.html`:
 - `RATING_INTERVALS` — days per rating (currently 30/12/5/2)
 - `RATING_LABELS` — rename the ratings
 - `COMMON_PATTERNS` — pattern chips shown when adding
-- `THEMES` — color palette for light and dark
 - `leetcodeUrlFor` — how a problem link is guessed from the name
+
+The look lives in the `<style>` block in the `<head>`. Colors, radii, shadows and easing
+are CSS custom properties on `:root` (light) and `:root[data-theme="dark"]` (dark), so
+retheming the whole app means editing those two blocks and nothing else.
 
 ## Flashcards
 

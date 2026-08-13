@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#F4F3EE" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#141412" media="(prefers-color-scheme: dark)" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" id="theme-color-meta" content="#F4F3EE" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Recall" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -13,6 +12,24 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <title>Recall — Interval Prep</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:wght@400&display=swap" />
+
+  <script>
+    // Applied before first paint so a dark-theme user never sees a light flash.
+    (function () {
+      try {
+        var stored = localStorage.getItem('recall_theme_v1');
+        var theme = stored || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,16 +44,727 @@
       presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
     });
   </script>
+
   <style>
+    /* ==========================================================================
+       Design tokens. Every themed colour lives here as a custom property so that
+       components can style their own hover / focus / active states in plain CSS
+       instead of threading a palette object through props and patching styles
+       from JS event handlers.
+       ========================================================================== */
+    :root {
+      --bg: #F4F3EE;
+      --surface: #FAF8F3;
+      --surface-2: #FFFFFF;
+      --inset: #EEEBE3;
+      --text: #1A1A1D;
+      --muted: #6F6A63;
+      --faint: #A69E91;
+      --border: #E3DED3;
+      --border-strong: #D3CCBE;
+      --accent: #A9741A;
+      --accent-soft: rgba(169, 116, 26, 0.12);
+      --primary: #1D3C6E;
+      --primary-hover: #27508D;
+      --primary-soft: rgba(29, 60, 110, 0.10);
+      --success: #47682C;
+      --success-soft: rgba(71, 104, 44, 0.12);
+      --danger: #8B2E1E;
+      --danger-soft: rgba(139, 46, 30, 0.10);
+      --tabs-bg: #E8E4DA;
+      --dot-struggle: #B8402E;
+      --dot-solid: #7A7A2E;
+      --on-primary: #FAF8F3;
+      --on-primary-muted: #BCC8DC;
+      --hover: rgba(26, 26, 29, 0.045);
+      --press: rgba(26, 26, 29, 0.08);
+      --shadow-sm: 0 1px 2px rgba(48, 40, 26, 0.05), 0 1px 1px rgba(48, 40, 26, 0.03);
+      --shadow-md: 0 1px 2px rgba(48, 40, 26, 0.05), 0 10px 22px -12px rgba(48, 40, 26, 0.22);
+      --shadow-lg: 0 2px 6px rgba(48, 40, 26, 0.06), 0 20px 40px -16px rgba(48, 40, 26, 0.28);
+      --header-bg: rgba(244, 243, 238, 0.72);
+      --ring: rgba(29, 60, 110, 0.40);
+      --hatch: rgba(26, 26, 29, 0.045);
+      --skeleton: rgba(26, 26, 29, 0.06);
+      --skeleton-sheen: rgba(255, 255, 255, 0.55);
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #131312;
+      --surface: #1C1C19;
+      --surface-2: #232320;
+      --inset: #191916;
+      --text: #EDEBE4;
+      --muted: #99938A;
+      --faint: #635E57;
+      --border: #2C2B27;
+      --border-strong: #3B3934;
+      --accent: #D9A040;
+      --accent-soft: rgba(217, 160, 64, 0.14);
+      --primary: #7BA0E0;
+      --primary-hover: #93B2E9;
+      --primary-soft: rgba(123, 160, 224, 0.14);
+      --success: #8FB45C;
+      --success-soft: rgba(143, 180, 92, 0.14);
+      --danger: #D4705B;
+      --danger-soft: rgba(212, 112, 91, 0.14);
+      --tabs-bg: #232320;
+      --dot-struggle: #D96450;
+      --dot-solid: #B0AC56;
+      --on-primary: #10161F;
+      --on-primary-muted: #2E3E56;
+      --hover: rgba(255, 255, 255, 0.05);
+      --press: rgba(255, 255, 255, 0.09);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.42);
+      --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.38), 0 12px 28px -14px rgba(0, 0, 0, 0.7);
+      --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.44), 0 24px 48px -18px rgba(0, 0, 0, 0.78);
+      --header-bg: rgba(19, 19, 18, 0.72);
+      --ring: rgba(123, 160, 224, 0.48);
+      --hatch: rgba(255, 255, 255, 0.035);
+      --skeleton: rgba(255, 255, 255, 0.05);
+      --skeleton-sheen: rgba(255, 255, 255, 0.07);
+    }
+
+    :root {
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+      --t-fast: 130ms;
+      --t-base: 210ms;
+      --r-sm: 8px;
+      --r-md: 10px;
+      --r-lg: 14px;
+      --r-xl: 18px;
+      --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --font-display: 'Instrument Serif', ui-serif, Georgia, 'Times New Roman', serif;
+    }
+
+    /* ==========================================================================
+       Base
+       ========================================================================== */
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
+    html { background: var(--bg); }
+
     body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-feature-settings: 'cv05' 1, 'cv11' 1, 'ss01' 1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior: none;
-      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      overscroll-behavior-y: none;
+      text-rendering: optimizeLegibility;
     }
-    input, button, textarea { font-family: inherit; }
-    #root { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+
+    input, button, textarea, select { font-family: inherit; color: inherit; }
+    button { cursor: pointer; }
+
+    ::selection { background: var(--primary-soft); color: var(--text); }
+
+    :focus { outline: none; }
+    :focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+      border-radius: var(--r-sm);
+    }
+
+    .mono { font-family: var(--font-mono); font-feature-settings: 'zero' 1; }
+    .display { font-family: var(--font-display); font-weight: 400; }
+    .tnum { font-variant-numeric: tabular-nums; }
+
+    /* Thin, theme-aware scrollbars. The stock ones are the loudest element on a
+       code block and read as unfinished. */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 999px;
+      border: 3px solid transparent;
+      background-clip: content-box;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: content-box; }
+
+    /* ==========================================================================
+       Motion
+       ========================================================================== */
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pop-in {
+      from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(14px) scale(0.97); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes shimmer {
+      from { background-position: -180% 0; }
+      to   { background-position: 180% 0; }
+    }
+    @keyframes soft-pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.45; }
+    }
+
+    .anim-rise { animation: rise 460ms var(--ease-out) both; }
+    .anim-fade { animation: fade-in 320ms ease both; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* ==========================================================================
+       Layout shell
+       ========================================================================== */
+    .shell { min-height: 100vh; min-height: 100dvh; background: var(--bg); }
+    .wrap { width: 100%; max-width: 34rem; margin: 0 auto; padding: 0 20px; }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      padding-top: env(safe-area-inset-top);
+      background: var(--header-bg);
+      -webkit-backdrop-filter: saturate(180%) blur(16px);
+      backdrop-filter: saturate(180%) blur(16px);
+      border-bottom: 1px solid transparent;
+      transition: border-color var(--t-base) ease, box-shadow var(--t-base) ease;
+    }
+    .app-header[data-scrolled="true"] {
+      border-bottom-color: var(--border);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.01);
+    }
+    .app-header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      height: 60px;
+    }
+
+    .wordmark {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+    .wordmark-name {
+      font-family: var(--font-display);
+      font-size: 26px;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .wordmark-sub {
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      font-weight: 500;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .page-pad { padding-top: 28px; padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+
+    /* ==========================================================================
+       Buttons
+       ========================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      border-radius: var(--r-md);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      padding: 9px 14px;
+      background: transparent;
+      color: var(--text);
+      transition: background var(--t-fast) ease, color var(--t-fast) ease,
+                  border-color var(--t-fast) ease, transform var(--t-fast) var(--ease-out),
+                  box-shadow var(--t-fast) ease, opacity var(--t-fast) ease;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.975); }
+    .btn:disabled { cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--on-primary);
+      box-shadow: var(--shadow-sm);
+      font-weight: 600;
+    }
+    @media (hover: hover) {
+      .btn-primary:hover:not(:disabled) { background: var(--primary-hover); box-shadow: var(--shadow-md); }
+    }
+    .btn-primary:disabled { background: var(--tabs-bg); color: var(--faint); box-shadow: none; }
+
+    .btn-quiet {
+      background: var(--tabs-bg);
+      color: var(--text);
+    }
+    @media (hover: hover) { .btn-quiet:hover:not(:disabled) { background: var(--border); } }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: var(--border);
+    }
+    @media (hover: hover) {
+      .btn-ghost:hover:not(:disabled) { background: var(--hover); color: var(--text); border-color: var(--border-strong); }
+    }
+
+    .btn-danger { background: var(--danger); color: #FFF6F3; font-weight: 600; }
+    @media (hover: hover) { .btn-danger:hover { filter: brightness(1.08); } }
+
+    .btn-lg { padding: 14px 18px; font-size: 15px; border-radius: var(--r-lg); width: 100%; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: var(--r-sm); }
+
+    /* Square icon buttons in the header. */
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      color: var(--muted);
+      transition: background var(--t-fast) ease, color var(--t-fast) ease,
+                  border-color var(--t-fast) ease, transform var(--t-fast) var(--ease-out);
+    }
+    @media (hover: hover) {
+      .icon-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
+    }
+    .icon-btn:active { transform: scale(0.94); }
+
+    .icon-swap { display: inline-flex; animation: pop-in 260ms var(--ease-spring) both; }
+
+    /* ==========================================================================
+       Surfaces
+       ========================================================================== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow-sm);
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+    }
+    .inset {
+      background: var(--inset);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+    }
+    .dashed { border-style: dashed; border-color: var(--border-strong); }
+
+    /* The face-down side of a flashcard. Hatching makes "there is something
+       behind this" legible at a glance, without a literal card-flip. */
+    .card-back {
+      background-color: var(--inset);
+      background-image: repeating-linear-gradient(
+        45deg, var(--hatch) 0 1.5px, transparent 1.5px 9px
+      );
+    }
+
+    /* ==========================================================================
+       Fields
+       ========================================================================== */
+    .field {
+      display: block;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text);
+      padding: 11px 13px;
+      font-size: 14px;
+      line-height: 1.55;
+      transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease, background var(--t-fast) ease;
+    }
+    .field::placeholder { color: var(--faint); }
+    .field:hover:not(:focus) { border-color: var(--border-strong); }
+    .field:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+      outline: none;
+    }
+    .field-inset { background: var(--inset); }
+    .field-lg { padding: 13px 15px; font-size: 15px; border-radius: var(--r-lg); }
+    textarea.field { resize: vertical; min-height: 44px; }
+    textarea.field.mono { font-size: 12.5px; line-height: 1.6; }
+
+    .field-label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .field-hint { margin-top: 6px; font-size: 11px; color: var(--faint); line-height: 1.5; }
+
+    /* iOS zooms the viewport when a focused field is under 16px. Zoom is left
+       enabled for accessibility, so the fields grow on touch devices instead. */
+    @media (pointer: coarse) {
+      .field, .field-lg { font-size: 16px; }
+      textarea.field.mono { font-size: 14px; }
+    }
+
+    /* ==========================================================================
+       Segmented control
+       ========================================================================== */
+    .seg {
+      position: relative;
+      display: flex;
+      padding: 4px;
+      border-radius: var(--r-lg);
+      background: var(--tabs-bg);
+      border: 1px solid var(--border);
+    }
+    .seg-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: calc((100% - 8px) / 3);
+      height: calc(100% - 8px);
+      border-radius: var(--r-md);
+      background: var(--surface-2);
+      box-shadow: var(--shadow-sm);
+      transition: transform 380ms var(--ease-out);
+    }
+    .seg-btn {
+      position: relative;
+      z-index: 1;
+      flex: 1 1 0;
+      padding: 9px 0;
+      border: 0;
+      background: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--r-md);
+      color: var(--muted);
+      transition: color var(--t-base) ease;
+    }
+    .seg-btn[aria-selected="true"] { color: var(--text); font-weight: 600; }
+    @media (hover: hover) { .seg-btn:hover { color: var(--text); } }
+
+    /* ==========================================================================
+       Pills, chips, dots
+       ========================================================================== */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.5;
+      background: var(--tabs-bg);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .pill-accent { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .pill-success { background: var(--success-soft); color: var(--success); font-weight: 600; }
+    .pill-outline { background: transparent; border: 1px solid var(--border); }
+
+    .dot { width: 6px; height: 6px; border-radius: 999px; flex: none; }
+
+    .chip {
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 500;
+      line-height: 1;
+      transition: background var(--t-fast) ease, color var(--t-fast) ease,
+                  border-color var(--t-fast) ease, transform var(--t-fast) var(--ease-out);
+    }
+    @media (hover: hover) {
+      .chip:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
+    }
+    .chip:active { transform: scale(0.95); }
+    .chip[aria-pressed="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--on-primary);
+      font-weight: 600;
+    }
+
+    .link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--primary);
+      font-size: 11.5px;
+      font-weight: 500;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: color var(--t-fast) ease, opacity var(--t-fast) ease;
+    }
+    @media (hover: hover) { .link:hover { color: var(--primary-hover); text-decoration: underline; text-underline-offset: 2px; } }
+
+    /* ==========================================================================
+       Hero counter
+       ========================================================================== */
+    .hero-num {
+      font-family: var(--font-display);
+      font-size: 76px;
+      line-height: 0.82;
+      letter-spacing: -0.015em;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      transition: color var(--t-base) ease;
+    }
+    .hero-num[data-due="true"] { color: var(--accent); }
+
+    /* ==========================================================================
+       Rating buttons
+       ========================================================================== */
+    .rating {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 12px 13px;
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      transition: background var(--t-fast) ease, border-color var(--t-fast) ease,
+                  transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) ease, color var(--t-fast) ease;
+    }
+    @media (hover: hover) {
+      .rating:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+    }
+    .rating:active { transform: scale(0.97); }
+    .rating[aria-pressed="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--on-primary);
+      box-shadow: var(--shadow-md);
+    }
+    .rating[aria-pressed="true"] .rating-days { color: var(--on-primary-muted); }
+    .rating-label { font-size: 13px; font-weight: 600; }
+    .rating-days { font-family: var(--font-mono); font-size: 11px; color: var(--muted); transition: color var(--t-fast) ease; }
+
+    /* ==========================================================================
+       Review card dismissal
+       ========================================================================== */
+    .review-slot {
+      overflow: hidden;
+      padding-bottom: 12px;
+      transition: max-height 380ms var(--ease-out), opacity 220ms ease,
+                  transform 300ms var(--ease-out), padding-bottom 380ms var(--ease-out);
+    }
+    .review-slot[data-leaving="true"] {
+      max-height: 0 !important;
+      padding-bottom: 0;
+      opacity: 0;
+      transform: scale(0.97) translateY(-6px);
+    }
+
+    /* ==========================================================================
+       Library rows
+       ========================================================================== */
+    .row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease,
+                  background var(--t-fast) ease;
+    }
+    @media (hover: hover) {
+      .row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+    }
+    .row[data-expanded="true"] { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+
+    .row-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: 0;
+      padding: 0;
+      color: var(--text);
+      border-radius: var(--r-sm);
+    }
+    .row-chevron {
+      flex: none;
+      color: var(--faint);
+      transition: transform var(--t-base) var(--ease-out), color var(--t-fast) ease;
+    }
+    .row-toggle[aria-expanded="true"] .row-chevron { transform: rotate(90deg); color: var(--muted); }
+    @media (hover: hover) { .row-toggle:hover .row-chevron { color: var(--muted); } }
+
+    .row-danger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      flex: none;
+      border: 0;
+      border-radius: var(--r-sm);
+      background: transparent;
+      color: var(--faint);
+      transition: background var(--t-fast) ease, color var(--t-fast) ease;
+    }
+    @media (hover: hover) { .row-danger:hover { background: var(--danger-soft); color: var(--danger); } }
+
+    /* ==========================================================================
+       Menu
+       ========================================================================== */
+    .menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 214px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      transform-origin: top right;
+      animation: pop-in 200ms var(--ease-out) both;
+      z-index: 50;
+    }
+    .menu-head { padding: 11px 13px; border-bottom: 1px solid var(--border); }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      text-align: left;
+      padding: 11px 13px;
+      background: none;
+      border: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      transition: background var(--t-fast) ease;
+    }
+    @media (hover: hover) { .menu-item:hover { background: var(--hover); } }
+
+    .avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      flex: none;
+      border-radius: 999px;
+      background: var(--primary);
+      color: var(--on-primary);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    /* ==========================================================================
+       Code block
+       ========================================================================== */
+    .code {
+      font-family: var(--font-mono);
+      background: var(--inset);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text);
+      font-size: 12.5px;
+      line-height: 1.65;
+      padding: 13px;
+      margin: 0;
+      overflow-x: auto;
+      white-space: pre;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ==========================================================================
+       Skeletons
+       ========================================================================== */
+    .sk {
+      border-radius: 6px;
+      background-color: var(--skeleton);
+      background-image: linear-gradient(90deg, transparent 0%, var(--skeleton-sheen) 50%, transparent 100%);
+      background-size: 180% 100%;
+      background-repeat: no-repeat;
+      animation: shimmer 1.5s linear infinite;
+    }
+
+    /* ==========================================================================
+       Toasts
+       ========================================================================== */
+    .toast-layer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      max-width: 26rem;
+      width: fit-content;
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      pointer-events: auto;
+      animation: toast-in 320ms var(--ease-spring) both;
+      transition: opacity 220ms ease, transform 220ms var(--ease-out);
+    }
+    .toast[data-leaving="true"] { opacity: 0; transform: translateY(8px) scale(0.97); }
+    .toast[data-variant="error"] { border-color: var(--danger); color: var(--danger); }
+    .toast[data-variant="success"] .toast-icon { color: var(--success); }
+    .toast-icon { flex: none; display: inline-flex; }
+
+    /* ==========================================================================
+       Misc
+       ========================================================================== */
+    .stack-2 > * + * { margin-top: 8px; }
+    .stack-3 > * + * { margin-top: 12px; }
+    .stack-4 > * + * { margin-top: 16px; }
+    .stack-5 > * + * { margin-top: 20px; }
+    .divider { height: 1px; background: var(--border); border: 0; margin: 0; }
+    .breathe { animation: soft-pulse 1.6s ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -53,23 +781,28 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_ZqPnxAT_g8he81dVRvbRfw_SZZeFPI9';
     // ============================================================
 
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    function showFatal(msg) {
+      document.getElementById('root').innerHTML = `
+        <div style="padding: 24px; max-width: 460px; margin: 15vh auto; font-family: var(--font-sans);">
+          <div style="font-family: var(--font-display); font-size: 26px; color: var(--text); margin-bottom: 10px;">
+            App failed to load
+          </div>
+          <div style="color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 18px;">${msg}</div>
+          <div style="color: var(--faint); font-size: 11.5px; line-height: 1.6;">
+            Check the browser console for details. Common causes: bad Supabase URL/key, CDN blocked by
+            network, or a script that failed to load.
+          </div>
+        </div>
+      `;
+    }
 
     let sb;
     try {
       sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     } catch (err) {
       showFatal('Failed to init Supabase: ' + err.message);
-    }
-
-    function showFatal(msg) {
-      document.getElementById('root').innerHTML = `
-        <div style="padding: 24px; max-width: 500px; margin: 40px auto; font-family: ui-sans-serif, system-ui;">
-          <div style="color: #8B2E1E; font-weight: 600; margin-bottom: 8px;">App failed to load</div>
-          <div style="color: #7A7570; font-size: 13px; margin-bottom: 16px;">${msg}</div>
-          <div style="color: #B8B0A3; font-size: 11px;">Check the browser console for details. Common causes: bad Supabase URL/key, CDN blocked by network, or a script that failed to load.</div>
-        </div>
-      `;
     }
 
     // Catch anything that goes uncaught
@@ -117,37 +850,117 @@
     const hasCard = (p) => Boolean((p.solution || '').trim() || (p.notes || '').trim());
 
     const THEME_KEY = 'recall_theme_v1';
-    const loadTheme = () => { try { return localStorage.getItem(THEME_KEY) || 'light'; } catch { return 'light'; } };
+    const systemTheme = () => (
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    );
+    const loadTheme = () => {
+      try { return localStorage.getItem(THEME_KEY) || systemTheme(); } catch { return 'light'; }
+    };
     const saveTheme = (t) => { try { localStorage.setItem(THEME_KEY, t); } catch {} };
 
-    const THEMES = {
-      light: {
-        bg: '#F4F3EE', surface: '#FAF8F3',
-        text: '#1A1A1D', muted: '#7A7570', faint: '#B8B0A3',
-        border: '#E0DBD0', accent: '#B8801A',
-        primary: '#1D3C6E', success: '#4A6B2E', danger: '#8B2E1E',
-        tabsBg: '#EAE7DE',
-        dotStruggle: '#B8402E', dotSolid: '#7A7A2E',
-        onPrimary: '#FAF8F3', onPrimaryMuted: '#D4CFC5',
-      },
-      dark: {
-        bg: '#141412', surface: '#1E1E1B',
-        text: '#EDEBE4', muted: '#8B857B', faint: '#4A4640',
-        border: '#2E2D29', accent: '#D9A040',
-        primary: '#6B92D6', success: '#7A9E4A', danger: '#C25A45',
-        tabsBg: '#252420',
-        dotStruggle: '#D96450', dotSolid: '#A8A44E',
-        onPrimary: '#0F1420', onPrimaryMuted: '#2A3550',
-      },
+    // The status bar / browser chrome colour has to follow the in-app toggle, not the OS
+    // setting, or a dark-themed app sits under a light system bar.
+    const THEME_META = { light: '#F4F3EE', dark: '#131312' };
+    const applyTheme = (theme) => {
+      document.documentElement.dataset.theme = theme;
+      const meta = document.getElementById('theme-color-meta');
+      if (meta) meta.setAttribute('content', THEME_META[theme]);
     };
 
+    // ============================================================
+    // Icons — inline SVG rather than text glyphs, which render at
+    // wildly different weights and baselines across platforms.
+    // ============================================================
+    function Svg({ size = 16, children, style, className = '' }) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}
+          style={{ display: 'block', flex: 'none', ...style }} aria-hidden="true" focusable="false">
+          {children}
+        </svg>
+      );
+    }
+    const IconMoon = (p) => <Svg {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></Svg>;
+    const IconSun = (p) => (
+      <Svg {...p}>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4" />
+      </Svg>
+    );
+    const IconMore = (p) => (
+      <Svg {...p}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></Svg>
+    );
+    const IconExternal = (p) => <Svg {...p}><path d="M15 3h6v6M10.5 13.5 21 3M18 13.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5.5" /></Svg>;
+    const IconChevron = (p) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
+    const IconTrash = (p) => <Svg {...p}><path d="M3 6h18M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6M18.5 6l-.9 13.1A2 2 0 0 1 15.6 21H8.4a2 2 0 0 1-2-1.9L5.5 6" /></Svg>;
+    const IconPlus = (p) => <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg>;
+    const IconCheck = (p) => <Svg {...p}><path d="M20 6 9 17l-5-5" /></Svg>;
+    const IconEye = (p) => <Svg {...p}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></Svg>;
+    const IconMail = (p) => <Svg {...p}><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" /><path d="m21 7-9 5.5L3 7" /></Svg>;
+    const IconSignOut = (p) => <Svg {...p}><path d="M9.5 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4.5M16 16.5l4.5-4.5L16 7.5M20.5 12H9.5" /></Svg>;
+    const IconPencil = (p) => <Svg {...p}><path d="M12 20h9M16.4 3.6a2.1 2.1 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5L16.4 3.6z" /></Svg>;
+    const IconInbox = (p) => (
+      <Svg {...p}>
+        <path d="M22 12h-5.5l-1.5 3h-6l-1.5-3H2" />
+        <path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z" />
+      </Svg>
+    );
+    const IconLayers = (p) => <Svg {...p}><path d="m12 2.5 9.5 5-9.5 5-9.5-5 9.5-5zM2.5 12.5 12 17.5l9.5-5M2.5 17.5 12 22.5l9.5-5" /></Svg>;
+    const IconAlert = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5M12 16.2v.1" /></Svg>;
+    const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" /></Svg>;
+
+    // ============================================================
+    // Toasts — replace blocking window.alert() for failures, and give
+    // silent writes (rate / save / delete) a visible confirmation.
+    // ============================================================
+    function useToasts() {
+      const [toasts, setToasts] = useState([]);
+      const timers = useRef([]);
+
+      useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+      const notify = useCallback((message, variant = 'info') => {
+        const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const life = variant === 'error' ? 5200 : 2600;
+        setToasts((t) => [...t, { id, message, variant, leaving: false }].slice(-3));
+        timers.current.push(setTimeout(() => {
+          setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)));
+        }, life));
+        timers.current.push(setTimeout(() => {
+          setToasts((t) => t.filter((x) => x.id !== id));
+        }, life + 260));
+      }, []);
+
+      const dismiss = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+      return { toasts, notify, dismiss };
+    }
+
+    function ToastLayer({ toasts, onDismiss }) {
+      if (toasts.length === 0) return null;
+      return (
+        <div className="toast-layer" role="status" aria-live="polite">
+          {toasts.map((t) => (
+            <div key={t.id} className="toast" data-variant={t.variant} data-leaving={t.leaving}
+              onClick={() => onDismiss(t.id)}>
+              <span className="toast-icon">
+                {t.variant === 'error' ? <IconAlert size={14} /> : <IconCheck size={14} />}
+              </span>
+              <span>{t.message}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Shell
+    // ============================================================
     function App() {
       const [authState, setAuthState] = useState('checking');
       const [user, setUser] = useState(null);
       const [theme, setTheme] = useState(loadTheme);
-      const C = THEMES[theme];
 
-      useEffect(() => { document.documentElement.style.background = C.bg; }, [C.bg]);
+      useEffect(() => { applyTheme(theme); }, [theme]);
 
       useEffect(() => {
         sb.auth.getSession().then(({ data: { session } }) => {
@@ -168,18 +981,41 @@
 
       if (authState === 'checking') {
         return (
-          <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
-            <div style={{ color: C.muted, fontSize: 12, letterSpacing: 2 }}>CHECKING SESSION</div>
+          <div className="shell flex items-center justify-center">
+            <div className="eyebrow breathe">Checking session</div>
           </div>
         );
       }
       if (authState === 'signed-out') {
-        return <AuthScreen C={C} theme={theme} onToggleTheme={toggleTheme} />;
+        return <AuthScreen theme={theme} onToggleTheme={toggleTheme} />;
       }
-      return <MainApp user={user} C={C} theme={theme} onToggleTheme={toggleTheme} />;
+      return <MainApp user={user} theme={theme} onToggleTheme={toggleTheme} />;
     }
 
-    function AuthScreen({ C, theme, onToggleTheme }) {
+    function ThemeToggle({ theme, onToggle }) {
+      return (
+        <button onClick={onToggle} className="icon-btn"
+          aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}>
+          <span key={theme} className="icon-swap">
+            {theme === 'light' ? <IconMoon size={15} /> : <IconSun size={15} />}
+          </span>
+        </button>
+      );
+    }
+
+    function Wordmark() {
+      return (
+        <div className="wordmark">
+          <span className="wordmark-name">Recall</span>
+          <span className="wordmark-sub">INTERVAL PREP</span>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Auth
+    // ============================================================
+    function AuthScreen({ theme, onToggleTheme }) {
       const [email, setEmail] = useState('');
       const [sending, setSending] = useState(false);
       const [sent, setSent] = useState(false);
@@ -214,101 +1050,86 @@
       };
 
       return (
-        <div className="min-h-screen flex flex-col" style={{ background: C.bg, color: C.text }}>
-          <div className="max-w-lg w-full mx-auto px-5 py-6 flex justify-between items-baseline">
-            <div className="flex items-baseline gap-3">
-              <div className="font-bold text-xl tracking-tight">Recall</div>
-              <div style={{ color: C.faint, fontSize: 10, letterSpacing: 2 }} className="font-medium">
-                INTERVAL PREP
-              </div>
+        <div className="shell flex flex-col">
+          <header className="app-header">
+            <div className="wrap app-header-inner">
+              <Wordmark />
+              <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             </div>
-            <button onClick={onToggleTheme} className="rounded-md transition flex items-center justify-center"
-              style={{ background: C.tabsBg, color: C.muted, width: 28, height: 28, fontSize: 14, lineHeight: 1 }}
-              aria-label="Toggle theme">
-              {theme === 'light' ? '☾' : '☀'}
-            </button>
-          </div>
+          </header>
 
-          <div className="flex-1 flex items-center justify-center px-5">
-            <div className="max-w-sm w-full">
+          <div className="flex-1 flex items-center justify-center wrap"
+            style={{ paddingTop: 32, paddingBottom: 'calc(48px + env(safe-area-inset-bottom))' }}>
+            <div style={{ width: '100%', maxWidth: 380 }}>
               {!sent ? (
-                <>
-                  <div className="mb-8">
-                    <div style={{ color: C.muted, fontSize: 10, letterSpacing: 2, fontWeight: 500 }} className="mb-2">
-                      SIGN IN
-                    </div>
-                    <div className="font-bold tracking-tight mb-3" style={{ fontSize: 32, lineHeight: 1.1 }}>
+                <div className="anim-rise">
+                  <div style={{ marginBottom: 28 }}>
+                    <div className="eyebrow" style={{ marginBottom: 10 }}>Sign in</div>
+                    <h1 className="display" style={{ fontSize: 40, lineHeight: 1.06, letterSpacing: '-0.015em', margin: '0 0 12px' }}>
                       Your queue,<br />across every device.
-                    </div>
-                    <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.5 }}>
+                    </h1>
+                    <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
                       Enter your email and we'll send you a sign-in link. No password to remember.
-                    </div>
+                    </p>
                   </div>
 
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError(null); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') sendLink(); }}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    inputMode="email"
-                    className="w-full px-4 py-3 rounded-lg outline-none transition mb-3"
-                    style={{
-                      background: C.surface, border: `1px solid ${C.border}`,
-                      color: C.text, fontSize: 15,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = C.primary)}
-                    onBlur={(e) => (e.target.style.borderColor = C.border)}
-                  />
-
-                  <button onClick={sendLink} disabled={sending || !email}
-                    className="w-full py-3.5 rounded-lg font-semibold transition"
-                    style={{
-                      background: sending || !email ? C.tabsBg : C.primary,
-                      color: sending || !email ? C.muted : C.onPrimary,
-                      fontSize: 15,
-                      cursor: sending ? 'wait' : (!email ? 'not-allowed' : 'pointer'),
-                    }}>
-                    {sending ? 'Sending…' : 'Send sign-in link'}
-                  </button>
+                  <div className="stack-3">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') sendLink(); }}
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                      inputMode="email"
+                      aria-label="Email address"
+                      className="field field-lg"
+                    />
+                    <button onClick={sendLink} disabled={sending || !email} className="btn btn-primary btn-lg">
+                      {sending ? 'Sending…' : <><IconMail size={16} /> Send sign-in link</>}
+                    </button>
+                  </div>
 
                   {error && (
-                    <div className="mt-3 rounded-lg p-3" style={{ background: C.surface, border: `1px solid ${C.danger}` }}>
-                      <div style={{ fontSize: 12, color: C.danger }}>{error}</div>
+                    <div className="panel anim-fade" style={{ marginTop: 12, padding: 12, borderColor: 'var(--danger)', background: 'var(--danger-soft)' }}>
+                      <div className="flex items-start gap-2" style={{ color: 'var(--danger)', fontSize: 12.5, lineHeight: 1.5 }}>
+                        <IconAlert size={14} style={{ marginTop: 1 }} />
+                        <span>{error}</span>
+                      </div>
                     </div>
                   )}
 
-                  <div className="mt-6" style={{ fontSize: 11, color: C.faint, lineHeight: 1.5 }}>
+                  <p style={{ marginTop: 26, fontSize: 11.5, color: 'var(--faint)', lineHeight: 1.6 }}>
                     We only store your problem list and email. No tracking, no ads, no analytics.
-                  </div>
-                </>
+                  </p>
+                </div>
               ) : (
-                <>
-                  <div className="mb-6">
-                    <div style={{ color: C.muted, fontSize: 10, letterSpacing: 2, fontWeight: 500 }} className="mb-2">
-                      LINK SENT
-                    </div>
-                    <div className="font-bold tracking-tight mb-3" style={{ fontSize: 28, lineHeight: 1.1 }}>
+                <div className="anim-rise">
+                  <div style={{ marginBottom: 22 }}>
+                    <span className="pill pill-success" style={{ marginBottom: 14 }}>
+                      <IconCheck size={12} /> Link sent
+                    </span>
+                    <h1 className="display" style={{ fontSize: 36, lineHeight: 1.08, letterSpacing: '-0.015em', margin: '14px 0 12px' }}>
                       Check your email.
-                    </div>
-                    <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.5 }}>
-                      A sign-in link is on the way to <span className="font-mono" style={{ color: C.text }}>{email}</span>. Open it on this device to finish signing in. The link expires in an hour.
-                    </div>
+                    </h1>
+                    <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                      A sign-in link is on the way to{' '}
+                      <span className="mono" style={{ color: 'var(--text)', fontSize: 13 }}>{email}</span>.
+                      {' '}Open it on this device to finish signing in. The link expires in an hour.
+                    </p>
                   </div>
 
-                  <div className="rounded-lg p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-                    <div style={{ color: C.muted, fontSize: 11, lineHeight: 1.5 }}>
-                      Not seeing it? Check spam, or wait a minute — Supabase's free tier can throttle. If it never arrives, use a different email.
-                    </div>
+                  <div className="inset" style={{ padding: 14, marginBottom: 14 }}>
+                    <p style={{ color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.6, margin: 0 }}>
+                      Not seeing it? Check spam, or wait a minute — Supabase's free tier can throttle.
+                      If it never arrives, use a different email.
+                    </p>
                   </div>
 
-                  <button onClick={useDifferentEmail}
-                    className="w-full py-2.5 rounded-lg font-medium transition"
-                    style={{ background: C.tabsBg, color: C.text, fontSize: 13 }}>
+                  <button onClick={useDifferentEmail} className="btn btn-ghost" style={{ width: '100%' }}>
                     Use a different email
                   </button>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -316,14 +1137,43 @@
       );
     }
 
-    function MainApp({ user, C, theme, onToggleTheme }) {
+    // ============================================================
+    // Main
+    // ============================================================
+    function MainApp({ user, theme, onToggleTheme }) {
       const [problems, setProblems] = useState([]);
       const [view, setView] = useState('today');
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [menuOpen, setMenuOpen] = useState(false);
+      const [scrolled, setScrolled] = useState(false);
+      const menuRef = useRef(null);
+      const { toasts, notify, dismiss } = useToasts();
 
       useEffect(() => { fetchProblems(); }, []);
+
+      useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 4);
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+      }, []);
+
+      // A menu that only closes by clicking its own trigger again is the kind of
+      // papercut that makes an app feel unfinished.
+      useEffect(() => {
+        if (!menuOpen) return;
+        const onDown = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+        const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('touchstart', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+          document.removeEventListener('mousedown', onDown);
+          document.removeEventListener('touchstart', onDown);
+          document.removeEventListener('keydown', onKey);
+        };
+      }, [menuOpen]);
 
       const fetchProblems = async () => {
         setLoading(true); setError(null);
@@ -351,7 +1201,8 @@
         setProblems([...problems, newProblem]);
         setView('today');
         const { error } = await sb.from('problems').insert(newProblem);
-        if (error) { setProblems(prev); alert('Failed to save: ' + error.message); }
+        if (error) { setProblems(prev); notify('Failed to save: ' + error.message, 'error'); }
+        else notify(`${newProblem.name} added · back in ${RATING_INTERVALS[data.rating]}d`, 'success');
       };
 
       const rateProblem = async (id, rating) => {
@@ -366,7 +1217,8 @@
         const { error } = await sb.from('problems')
           .update({ history: newHistory, next_review: newNextReview })
           .eq('id', id);
-        if (error) { setProblems(prev); alert('Failed to save: ' + error.message); }
+        if (error) { setProblems(prev); notify('Failed to save: ' + error.message, 'error'); }
+        else notify(`Next review in ${RATING_INTERVALS[rating]} days`, 'success');
       };
 
       // Saves the card fields (solution / notes / url). Kept separate from rateProblem so
@@ -384,14 +1236,17 @@
         const prev = problems;
         setProblems(problems.map((p) => (p.id === id ? { ...p, ...patch } : p)));
         const { error } = await sb.from('problems').update(patch).eq('id', id);
-        if (error) { setProblems(prev); alert('Failed to save: ' + error.message); }
+        if (error) { setProblems(prev); notify('Failed to save: ' + error.message, 'error'); }
+        else notify('Card saved', 'success');
       };
 
       const deleteProblem = async (id) => {
+        const gone = problems.find((p) => p.id === id);
         const prev = problems;
         setProblems(problems.filter((p) => p.id !== id));
         const { error } = await sb.from('problems').delete().eq('id', id);
-        if (error) { setProblems(prev); alert('Failed to delete: ' + error.message); }
+        if (error) { setProblems(prev); notify('Failed to delete: ' + error.message, 'error'); }
+        else notify(`${gone ? gone.name : 'Problem'} removed`, 'success');
       };
 
       const signOut = async () => { await sb.auth.signOut(); };
@@ -402,93 +1257,78 @@
         .sort((a, b) => a.next_review.localeCompare(b.next_review));
       const stats = { total: problems.length, due: dueToday.length };
 
+      const TABS = [
+        { key: 'today', label: 'Today' },
+        { key: 'add', label: 'Add' },
+        { key: 'all', label: 'All' },
+      ];
+      const activeIndex = TABS.findIndex((t) => t.key === view);
+
       return (
-        <div className="min-h-screen" style={{ background: C.bg, color: C.text }}>
-          <div className="max-w-lg mx-auto px-5 py-6">
-            <header className="flex items-baseline justify-between mb-8">
-              <div className="flex items-baseline gap-3">
-                <div className="font-bold text-xl tracking-tight">Recall</div>
-                <div style={{ color: C.faint, fontSize: 10, letterSpacing: 2 }} className="font-medium">
-                  INTERVAL PREP
-                </div>
-              </div>
-              <div className="flex items-center gap-2 relative">
-                <div className="font-mono" style={{ color: C.muted, fontSize: 11 }}>
-                  {stats.total} tracked
-                </div>
-                <button onClick={onToggleTheme}
-                  className="rounded-md transition flex items-center justify-center"
-                  style={{ background: C.tabsBg, color: C.muted, width: 28, height: 28, fontSize: 14, lineHeight: 1 }}
-                  aria-label="Toggle theme">
-                  {theme === 'light' ? '☾' : '☀'}
-                </button>
-                <button onClick={() => setMenuOpen(!menuOpen)}
-                  className="rounded-md transition flex items-center justify-center"
-                  style={{ background: C.tabsBg, color: C.muted, width: 28, height: 28, fontSize: 16, lineHeight: 1 }}
-                  aria-label="Menu">
-                  ⋯
+        <div className="shell">
+          <header className="app-header" data-scrolled={scrolled}>
+            <div className="wrap app-header-inner">
+              <Wordmark />
+              <div className="flex items-center gap-2" style={{ position: 'relative' }} ref={menuRef}>
+                <span className="pill mono tnum" style={{ fontSize: 10.5 }}>{stats.total} tracked</span>
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                <button onClick={() => setMenuOpen(!menuOpen)} className="icon-btn"
+                  aria-label="Account menu" aria-haspopup="menu" aria-expanded={menuOpen}>
+                  <IconMore size={16} />
                 </button>
                 {menuOpen && (
-                  <div className="absolute top-full right-0 mt-2 rounded-lg overflow-hidden z-10"
-                    style={{ background: C.surface, border: `1px solid ${C.border}`, minWidth: 180 }}>
-                    <div className="px-3 py-2 truncate"
-                      style={{ borderBottom: `1px solid ${C.border}`, fontSize: 11, color: C.muted }}>
-                      {user.email}
+                  <div className="menu" role="menu">
+                    <div className="menu-head flex items-center gap-2.5">
+                      <span className="avatar">{(user.email || '?').charAt(0)}</span>
+                      <span className="truncate" style={{ fontSize: 12, color: 'var(--muted)' }}>{user.email}</span>
                     </div>
-                    <button onClick={() => { setMenuOpen(false); signOut(); }}
-                      className="w-full text-left px-3 py-2 transition"
-                      style={{ color: C.text, fontSize: 13 }}>
+                    <button onClick={() => { setMenuOpen(false); signOut(); }} className="menu-item" role="menuitem">
+                      <IconSignOut size={15} style={{ color: 'var(--muted)' }} />
                       Sign out
                     </button>
                   </div>
                 )}
               </div>
-            </header>
+            </div>
+          </header>
 
+          <main className="wrap page-pad">
             {loading ? (
-              <div className="py-16 text-center" style={{ color: C.muted, fontSize: 12, letterSpacing: 2 }}>
-                LOADING PROBLEMS
-              </div>
+              <LoadingState />
             ) : error ? (
-              <div className="rounded-lg p-4 mb-4" style={{ background: C.surface, border: `1px solid ${C.danger}` }}>
-                <div style={{ color: C.danger, fontSize: 13, marginBottom: 8 }}>
-                  Couldn't load your problems: {error}
+              <div className="panel anim-fade" style={{ padding: 16, borderColor: 'var(--danger)', background: 'var(--danger-soft)' }}>
+                <div className="flex items-start gap-2" style={{ marginBottom: 12 }}>
+                  <IconAlert size={15} style={{ color: 'var(--danger)', marginTop: 1 }} />
+                  <div style={{ color: 'var(--danger)', fontSize: 13, lineHeight: 1.5 }}>
+                    Couldn't load your problems: {error}
+                  </div>
                 </div>
-                <button onClick={fetchProblems} className="px-3 py-1.5 rounded"
-                  style={{ background: C.primary, color: C.onPrimary, fontSize: 12, fontWeight: 500 }}>
-                  Retry
-                </button>
+                <button onClick={fetchProblems} className="btn btn-primary btn-sm">Retry</button>
               </div>
             ) : (
               <>
-                <div className="mb-8">
-                  <div className="mb-2" style={{ color: C.muted, fontSize: 10, letterSpacing: 2, fontWeight: 500 }}>
-                    TODAY
-                  </div>
-                  <div className="flex items-baseline gap-3">
-                    <div className="font-bold tracking-tight"
-                      style={{ fontSize: 56, lineHeight: 1, color: stats.due > 0 ? C.accent : C.text }}>
-                      {stats.due}
+                <section className="anim-rise" style={{ marginBottom: 26 }}>
+                  <div className="eyebrow" style={{ marginBottom: 12 }}>Today</div>
+                  <div className="flex items-end gap-3.5" style={{ flexWrap: 'wrap' }}>
+                    <span className="hero-num" data-due={stats.due > 0}>{stats.due}</span>
+                    <div style={{ paddingBottom: 4 }}>
+                      <div style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.3 }}>
+                        {stats.due === 1 ? 'problem' : 'problems'} to review
+                      </div>
+                      {stats.due === 0 && stats.total > 0 && (
+                        <span className="pill pill-success" style={{ marginTop: 7 }}>
+                          <IconCheck size={11} /> all clear
+                        </span>
+                      )}
                     </div>
-                    <div style={{ color: C.muted, fontSize: 15 }}>
-                      {stats.due === 1 ? 'problem' : 'problems'} to review
-                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="flex gap-1 mb-6 p-1 rounded-lg" style={{ background: C.tabsBg }}>
-                  {[
-                    { key: 'today', label: 'Today' },
-                    { key: 'add', label: 'Add' },
-                    { key: 'all', label: 'All' },
-                  ].map((tab) => (
-                    <button key={tab.key} onClick={() => setView(tab.key)}
-                      className="flex-1 py-2 text-sm font-medium rounded-md transition-all"
-                      style={{
-                        background: view === tab.key ? C.surface : 'transparent',
-                        color: view === tab.key ? C.text : C.muted,
-                        boxShadow: view === tab.key ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                      }}>
+                <div className="seg anim-rise" role="tablist" aria-label="Views" style={{ marginBottom: 22, animationDelay: '40ms' }}>
+                  <div className="seg-thumb" style={{ transform: `translateX(${Math.max(activeIndex, 0) * 100}%)` }} />
+                  {TABS.map((tab) => (
+                    <button key={tab.key} onClick={() => setView(tab.key)} className="seg-btn"
+                      role="tab" aria-selected={view === tab.key}>
                       {tab.label}
                     </button>
                   ))}
@@ -496,72 +1336,103 @@
 
                 {view === 'today' && (
                   <TodayView due={dueToday} onRate={rateProblem} onSaveCard={saveCard}
-                    hasProblems={problems.length > 0} onGoAdd={() => setView('add')} C={C} />
+                    hasProblems={problems.length > 0} onGoAdd={() => setView('add')} />
                 )}
-                {view === 'add' && <AddView onAdd={addProblem} C={C} />}
+                {view === 'add' && <AddView onAdd={addProblem} />}
                 {view === 'all' && (
-                  <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} C={C} />
+                  <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} />
                 )}
               </>
             )}
+          </main>
+
+          <ToastLayer toasts={toasts} onDismiss={dismiss} />
+        </div>
+      );
+    }
+
+    // Skeletons in the shape of the real content, so the first paint after load is a
+    // refinement of what is already on screen rather than a jump from a text label.
+    function LoadingState() {
+      return (
+        <div className="anim-fade" aria-busy="true" aria-label="Loading problems">
+          <div style={{ marginBottom: 26 }}>
+            <div className="sk" style={{ width: 54, height: 10, marginBottom: 14 }} />
+            <div className="sk" style={{ width: 168, height: 58, borderRadius: 10 }} />
+          </div>
+          <div className="sk" style={{ width: '100%', height: 46, borderRadius: 14, marginBottom: 22 }} />
+          <div className="stack-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="card" style={{ padding: 20 }}>
+                <div className="sk" style={{ width: `${58 - i * 9}%`, height: 15, marginBottom: 12 }} />
+                <div className="flex gap-2" style={{ marginBottom: 18 }}>
+                  <div className="sk" style={{ width: 74, height: 18, borderRadius: 999 }} />
+                  <div className="sk" style={{ width: 58, height: 18, borderRadius: 999 }} />
+                </div>
+                <div className="sk" style={{ width: '100%', height: 74, borderRadius: 10 }} />
+              </div>
+            ))}
           </div>
         </div>
       );
     }
 
-    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd, C }) {
+    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd }) {
       if (!hasProblems) return (
-        <EmptyState title="Nothing tracked yet"
+        <EmptyState icon={<IconSparkle size={22} />} title="Nothing tracked yet"
           body="Add the first problem you've solved recently. Rate it honestly — that rating sets when you'll see it again."
-          cta="Add a problem" onCta={onGoAdd} C={C} />
+          cta="Add a problem" onCta={onGoAdd} />
       );
       if (due.length === 0) return (
-        <EmptyState title="Clear queue"
+        <EmptyState icon={<IconInbox size={22} />} title="Clear queue"
           body="No reviews due today. Add new problems as you solve them, or come back tomorrow."
-          cta="Add a problem" onCta={onGoAdd} C={C} />
+          cta="Add a problem" onCta={onGoAdd} />
       );
       return (
-        <div className="space-y-3">
-          {due.map((p) => (
-            <ReviewCard key={p.id} problem={p} onRate={onRate} onSaveCard={onSaveCard} C={C} />
+        <div>
+          {due.map((p, i) => (
+            <ReviewCard key={p.id} problem={p} index={i} onRate={onRate} onSaveCard={onSaveCard} />
           ))}
         </div>
       );
     }
 
-    function ProblemLink({ problem, C }) {
+    function ProblemLink({ problem }) {
       const href = problemUrl(problem);
       if (!href) return null;
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer"
-          style={{ color: C.primary, fontSize: 11, textDecoration: 'none' }}>
-          ↗ open problem
+        <a href={href} target="_blank" rel="noopener noreferrer" className="link"
+          onClick={(e) => e.stopPropagation()}>
+          <IconExternal size={11} /> open
         </a>
       );
     }
 
-    function Field({ label, value, onChange, placeholder, mono, rows, C }) {
+    function Field({ label, value, onChange, placeholder, mono, rows, inset }) {
       return (
         <div>
-          <label className="block mb-1.5"
-            style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-            {label}
-          </label>
+          <label className="field-label">{label}</label>
           <textarea value={value} onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder} rows={rows}
-            className={`w-full px-3 py-2 rounded-lg outline-none transition ${mono ? 'font-mono' : ''}`}
-            style={{
-              background: C.bg, border: `1px solid ${C.border}`, color: C.text,
-              fontSize: mono ? 12 : 13, lineHeight: 1.5, resize: 'vertical',
-            }}
-            onFocus={(e) => (e.target.style.borderColor = C.primary)}
-            onBlur={(e) => (e.target.style.borderColor = C.border)} />
+            className={`field ${inset ? 'field-inset' : ''} ${mono ? 'mono' : ''}`} />
+        </div>
+      );
+    }
+
+    function LinkField({ value, onChange, placeholder, inset }) {
+      return (
+        <div>
+          <label className="field-label">Problem link</label>
+          <input type="url" value={value} onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder} inputMode="url"
+            className={`field ${inset ? 'field-inset' : ''}`} style={{ fontSize: 12.5 }} />
+          <div className="field-hint">Leave blank to use the LeetCode link guessed from the name.</div>
         </div>
       );
     }
 
     // Edit form for the three card fields. Used from both the review flow and the library.
-    function CardForm({ problem, onSave, onCancel, C }) {
+    function CardForm({ problem, onSave, onCancel }) {
       const [solution, setSolution] = useState(problem.solution || '');
       const [notes, setNotes] = useState(problem.notes || '');
       const [url, setUrl] = useState(problem.url || '');
@@ -569,198 +1440,162 @@
       const save = () => { onSave(problem.id, { solution, notes, url }); onCancel(); };
 
       return (
-        <div className="space-y-3">
-          <Field label="MY SOLUTION" value={solution} onChange={setSolution} mono rows={10}
-            placeholder="Paste the solution you actually wrote." C={C} />
-          <Field label="MY NOTES" value={notes} onChange={setNotes} rows={3}
-            placeholder="The insight, the edge case you missed, why it works." C={C} />
-          <div>
-            <label className="block mb-1.5"
-              style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-              PROBLEM LINK
-            </label>
-            <input type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-              placeholder={leetcodeUrlFor(problem.name) || 'https://…'}
-              className="w-full px-3 py-2 rounded-lg outline-none transition"
-              style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, fontSize: 12 }}
-              onFocus={(e) => (e.target.style.borderColor = C.primary)}
-              onBlur={(e) => (e.target.style.borderColor = C.border)} />
-            <div className="mt-1" style={{ color: C.faint, fontSize: 10 }}>
-              Leave blank to use the LeetCode link guessed from the name.
-            </div>
-          </div>
+        <div className="stack-3 anim-fade">
+          <Field label="My solution" value={solution} onChange={setSolution} mono rows={10} inset
+            placeholder="Paste the solution you actually wrote." />
+          <Field label="My notes" value={notes} onChange={setNotes} rows={3} inset
+            placeholder="The insight, the edge case you missed, why it works." />
+          <LinkField value={url} onChange={setUrl} inset
+            placeholder={leetcodeUrlFor(problem.name) || 'https://…'} />
           <div className="flex gap-2">
-            <button onClick={save} className="px-3 py-1.5 rounded font-medium"
-              style={{ background: C.primary, color: C.onPrimary, fontSize: 12 }}>
-              Save card
+            <button onClick={save} className="btn btn-primary btn-sm">
+              <IconCheck size={13} /> Save card
             </button>
-            <button onClick={onCancel} className="px-3 py-1.5 rounded font-medium"
-              style={{ background: C.tabsBg, color: C.muted, fontSize: 12 }}>
-              Cancel
-            </button>
+            <button onClick={onCancel} className="btn btn-ghost btn-sm">Cancel</button>
           </div>
         </div>
       );
     }
 
     // Read view of a card, with an edit toggle. This is the "back" of the flashcard.
-    function CardPanel({ problem, onSave, C }) {
+    function CardPanel({ problem, onSave }) {
       const [editing, setEditing] = useState(false);
 
       if (editing) {
-        return <CardForm problem={problem} onSave={onSave} onCancel={() => setEditing(false)} C={C} />;
+        return <CardForm problem={problem} onSave={onSave} onCancel={() => setEditing(false)} />;
       }
 
       // Stay compact when there is nothing saved. Opening the full form here would push
       // the rating buttons off screen for anyone who just wants to rate and move on.
       if (!hasCard(problem)) {
         return (
-          <div className="rounded-lg p-3 flex items-center justify-between gap-3"
-            style={{ background: C.bg, border: `1px dashed ${C.border}` }}>
-            <span style={{ color: C.muted, fontSize: 12 }}>No solution saved yet.</span>
-            <button onClick={() => setEditing(true)}
-              className="px-3 py-1.5 rounded font-medium shrink-0"
-              style={{ background: C.tabsBg, color: C.text, fontSize: 12 }}>
-              Add solution
+          <div className="inset dashed flex items-center justify-between gap-3" style={{ padding: '12px 13px' }}>
+            <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>No solution saved yet.</span>
+            <button onClick={() => setEditing(true)} className="btn btn-quiet btn-sm">
+              <IconPlus size={13} /> Add solution
             </button>
           </div>
         );
       }
 
       return (
-        <div className="space-y-3">
+        <div className="stack-3 anim-fade">
           {problem.solution && (
             <div>
-              <div className="flex items-baseline justify-between mb-1.5">
-                <span style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-                  MY SOLUTION
-                </span>
+              <div className="flex items-baseline justify-between gap-3" style={{ marginBottom: 7 }}>
+                <span className="field-label" style={{ margin: 0 }}>My solution</span>
                 {problem.solution_saved_at && (
-                  <span style={{ color: C.faint, fontSize: 10 }}>saved {problem.solution_saved_at}</span>
+                  <span className="mono tnum" style={{ color: 'var(--faint)', fontSize: 10 }}>
+                    saved {problem.solution_saved_at}
+                  </span>
                 )}
               </div>
-              <pre className="font-mono rounded-lg p-3 overflow-x-auto"
-                style={{
-                  background: C.bg, border: `1px solid ${C.border}`, color: C.text,
-                  fontSize: 12, lineHeight: 1.5, margin: 0, whiteSpace: 'pre',
-                }}>
-                {problem.solution}
-              </pre>
+              <pre className="code">{problem.solution}</pre>
             </div>
           )}
           {problem.notes && (
             <div>
-              <div className="mb-1.5" style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-                MY NOTES
-              </div>
-              <div style={{ color: C.text, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+              <span className="field-label">My notes</span>
+              <div style={{ color: 'var(--text)', fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                 {problem.notes}
               </div>
             </div>
           )}
-          <button onClick={() => setEditing(true)} className="px-3 py-1.5 rounded font-medium"
-            style={{ background: C.tabsBg, color: C.muted, fontSize: 12 }}>
-            Edit card
+          <button onClick={() => setEditing(true)} className="btn btn-ghost btn-sm">
+            <IconPencil size={12} /> Edit card
           </button>
         </div>
       );
     }
 
-    function ReviewCard({ problem, onRate, onSaveCard, C }) {
+    function ReviewCard({ problem, index, onRate, onSaveCard }) {
       const [rating, setRating] = useState(null);
       const [revealed, setRevealed] = useState(false);
+      const [leaving, setLeaving] = useState(false);
+      const slotRef = useRef(null);
       // Nothing saved yet means there is nothing to recall against, so go straight to
       // rating rather than dead-ending behind a reveal button that shows an empty card.
       const showRating = revealed || !hasCard(problem);
       const lastReview = problem.history[problem.history.length - 1];
       const daysSince = daysBetween(lastReview.date, todayStr());
       const daysOverdue = daysBetween(problem.next_review, todayStr());
-      const handleRate = (r) => { setRating(r); setTimeout(() => onRate(problem.id, r), 220); };
+
+      // Collapse the row out of the list rather than letting it vanish and snap the
+      // remaining cards upward. Height is locked to the measured value first so the
+      // transition to 0 has something to animate from.
+      const handleRate = (r) => {
+        if (rating !== null) return;
+        setRating(r);
+        const el = slotRef.current;
+        if (el) el.style.maxHeight = `${el.scrollHeight}px`;
+        requestAnimationFrame(() => requestAnimationFrame(() => setLeaving(true)));
+        setTimeout(() => onRate(problem.id, r), 360);
+      };
 
       return (
-        <div className="rounded-xl p-5 transition-all"
-          style={{
-            background: C.surface, border: `1px solid ${C.border}`,
-            opacity: rating !== null ? 0.4 : 1,
-            transform: rating !== null ? 'scale(0.98)' : 'scale(1)',
-          }}>
-          <div className="font-mono font-semibold text-base mb-1"
-            style={{ color: C.text, wordBreak: 'break-word' }}>
-            {problem.name}
-          </div>
-          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-4" style={{ fontSize: 12 }}>
-            <span className="px-2 py-0.5 rounded"
-              style={{ background: C.tabsBg, color: C.muted, fontSize: 11, fontWeight: 500 }}>
-              {problem.pattern}
-            </span>
-            <span style={{ color: C.muted }}>
-              last: {daysSince === 0 ? 'today' : `${daysSince}d ago`}
-            </span>
-            {daysOverdue > 0 && (
-              <span style={{ color: C.accent, fontWeight: 500 }}>{daysOverdue}d overdue</span>
-            )}
-            <ProblemLink problem={problem} C={C} />
-          </div>
+        <div className="review-slot" ref={slotRef} data-leaving={leaving}>
+          <div className="card anim-rise" style={{ padding: 20, animationDelay: `${Math.min(index, 6) * 55}ms` }}>
+            <div className="mono" style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word', marginBottom: 10 }}>
+              {problem.name}
+            </div>
+            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1.5" style={{ marginBottom: 16 }}>
+              <span className="pill">{problem.pattern}</span>
+              <span style={{ color: 'var(--muted)', fontSize: 11.5 }}>
+                last {daysSince === 0 ? 'today' : `${daysSince}d ago`}
+              </span>
+              {daysOverdue > 0 && <span className="pill pill-accent">{daysOverdue}d overdue</span>}
+              <ProblemLink problem={problem} />
+            </div>
 
-          <div className="mb-4">
-            {revealed || !hasCard(problem) ? (
-              <CardPanel problem={problem} onSave={onSaveCard} C={C} />
-            ) : (
-              <div className="rounded-lg p-5 text-center"
-                style={{ background: C.bg, border: `1px dashed ${C.border}` }}>
-                <div className="mb-3" style={{ color: C.muted, fontSize: 12 }}>
-                  Try to recall it first.
+            <div style={{ marginBottom: 16 }}>
+              {showRating ? (
+                <CardPanel problem={problem} onSave={onSaveCard} />
+              ) : (
+                <div className="inset card-back anim-fade" style={{ padding: 22, textAlign: 'center' }}>
+                  <div style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 14 }}>
+                    Try to recall it first.
+                  </div>
+                  <button onClick={() => setRevealed(true)} className="btn btn-primary">
+                    <IconEye size={15} /> Reveal solution
+                  </button>
                 </div>
-                <button onClick={() => setRevealed(true)}
-                  className="px-4 py-2 rounded-lg font-medium transition"
-                  style={{ background: C.primary, color: C.onPrimary, fontSize: 13 }}>
-                  Reveal solution
-                </button>
+              )}
+            </div>
+
+            {showRating && (
+              <div className="anim-fade">
+                <div className="eyebrow" style={{ marginBottom: 10 }}>How did it go?</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[4, 3, 2, 1].map((r) => (
+                    <RatingButton key={r} rating={r} selected={rating === r} onClick={() => handleRate(r)} />
+                  ))}
+                </div>
               </div>
             )}
           </div>
-
-          {showRating && (
-            <>
-              <div className="mb-2" style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-                HOW DID IT GO?
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[4, 3, 2, 1].map((r) => (
-                  <RatingButton key={r} rating={r} selected={rating === r} onClick={() => handleRate(r)} C={C} />
-                ))}
-              </div>
-            </>
-          )}
         </div>
       );
     }
 
-    function RatingButton({ rating, selected, onClick, C }) {
+    function RatingButton({ rating, selected, onClick }) {
       const label = RATING_LABELS[rating];
       const days = RATING_INTERVALS[rating];
-      const dotColor = { 4: C.dotStruggle, 3: C.accent, 2: C.dotSolid, 1: C.success }[rating];
+      const dotVar = {
+        4: 'var(--dot-struggle)', 3: 'var(--accent)', 2: 'var(--dot-solid)', 1: 'var(--success)',
+      }[rating];
 
       return (
-        <button onClick={onClick}
-          className="text-left rounded-lg p-3 transition-all active:scale-95"
-          style={{
-            background: selected ? C.primary : C.bg,
-            color: selected ? C.onPrimary : C.text,
-            border: `1px solid ${selected ? C.primary : C.border}`,
-          }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <div className="rounded-full" style={{ width: 6, height: 6, background: dotColor }} />
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
-          </div>
-          <div className="font-mono" style={{ fontSize: 11, color: selected ? C.onPrimaryMuted : C.muted }}>
-            → in {days}d
-          </div>
+        <button onClick={onClick} className="rating" aria-pressed={selected}>
+          <span className="flex items-center gap-1.5" style={{ marginBottom: 5 }}>
+            <span className="dot" style={{ background: dotVar }} />
+            <span className="rating-label">{label}</span>
+          </span>
+          <span className="rating-days">→ in {days}d</span>
         </button>
       );
     }
 
-    function AddView({ onAdd, C }) {
+    function AddView({ onAdd }) {
       const [name, setName] = useState('');
       const [pattern, setPattern] = useState('');
       const [rating, setRating] = useState(4);
@@ -777,40 +1612,21 @@
       };
 
       return (
-        <div className="space-y-5">
+        <div className="stack-5 anim-rise">
           <div>
-            <label className="block mb-2"
-              style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-              PROBLEM NAME
-            </label>
+            <label className="field-label">Problem name</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Two Sum"
-              className="w-full px-4 py-3 rounded-lg font-mono outline-none transition"
-              style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: 15 }}
-              onFocus={(e) => (e.target.style.borderColor = C.primary)}
-              onBlur={(e) => (e.target.style.borderColor = C.border)} />
+              placeholder="e.g. Two Sum" className="field field-lg mono" autoComplete="off" />
           </div>
 
           <div>
-            <label className="block mb-2"
-              style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-              PATTERN
-            </label>
+            <label className="field-label">Pattern</label>
             <input type="text" value={pattern} onChange={(e) => setPattern(e.target.value)}
-              placeholder="e.g. Hash Map"
-              className="w-full px-4 py-3 rounded-lg outline-none transition mb-3"
-              style={{ background: C.surface, border: `1px solid ${C.border}`, color: C.text, fontSize: 15 }}
-              onFocus={(e) => (e.target.style.borderColor = C.primary)}
-              onBlur={(e) => (e.target.style.borderColor = C.border)} />
+              placeholder="e.g. Hash Map" className="field field-lg" autoComplete="off"
+              style={{ marginBottom: 12 }} />
             <div className="flex flex-wrap gap-1.5">
               {COMMON_PATTERNS.map((p) => (
-                <button key={p} onClick={() => setPattern(p)}
-                  className="px-2.5 py-1 rounded transition"
-                  style={{
-                    background: pattern === p ? C.primary : C.tabsBg,
-                    color: pattern === p ? C.onPrimary : C.muted,
-                    fontSize: 11, fontWeight: 500,
-                  }}>
+                <button key={p} onClick={() => setPattern(p)} className="chip" aria-pressed={pattern === p}>
                   {p}
                 </button>
               ))}
@@ -818,123 +1634,107 @@
           </div>
 
           <div>
-            <label className="block mb-2"
-              style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-              HOW DID IT GO?
-            </label>
+            <label className="field-label">How did it go?</label>
             <div className="grid grid-cols-2 gap-2">
               {[4, 3, 2, 1].map((r) => (
-                <RatingButton key={r} rating={r} selected={rating === r} onClick={() => setRating(r)} C={C} />
+                <RatingButton key={r} rating={r} selected={rating === r} onClick={() => setRating(r)} />
               ))}
             </div>
           </div>
 
-          <div className="space-y-3 rounded-lg p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-            <div style={{ color: C.faint, fontSize: 11, lineHeight: 1.5 }}>
-              Optional, but this is what you'll be shown when the problem comes back around.
+          <div className="panel" style={{ padding: 16 }}>
+            <div className="flex items-start gap-2" style={{ marginBottom: 14 }}>
+              <IconLayers size={14} style={{ color: 'var(--faint)', marginTop: 2 }} />
+              <p style={{ color: 'var(--faint)', fontSize: 11.5, lineHeight: 1.6, margin: 0 }}>
+                Optional, but this is what you'll be shown when the problem comes back around.
+              </p>
             </div>
-            <Field label="MY SOLUTION" value={solution} onChange={setSolution} mono rows={8}
-              placeholder="Paste the solution you actually wrote." C={C} />
-            <Field label="MY NOTES" value={notes} onChange={setNotes} rows={3}
-              placeholder="The insight, the edge case you missed, why it works." C={C} />
-            <div>
-              <label className="block mb-1.5"
-                style={{ color: C.muted, fontSize: 10, letterSpacing: 1.5, fontWeight: 500 }}>
-                PROBLEM LINK
-              </label>
-              <input type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-                placeholder={leetcodeUrlFor(name) || 'https://…'}
-                className="w-full px-3 py-2 rounded-lg outline-none transition"
-                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, fontSize: 12 }}
-                onFocus={(e) => (e.target.style.borderColor = C.primary)}
-                onBlur={(e) => (e.target.style.borderColor = C.border)} />
-              <div className="mt-1" style={{ color: C.faint, fontSize: 10 }}>
-                Leave blank to use the LeetCode link guessed from the name.
-              </div>
+            <div className="stack-3">
+              <Field label="My solution" value={solution} onChange={setSolution} mono rows={8} inset
+                placeholder="Paste the solution you actually wrote." />
+              <Field label="My notes" value={notes} onChange={setNotes} rows={3} inset
+                placeholder="The insight, the edge case you missed, why it works." />
+              <LinkField value={url} onChange={setUrl} inset
+                placeholder={leetcodeUrlFor(name) || 'https://…'} />
             </div>
           </div>
 
-          <button onClick={submit} disabled={!canSubmit}
-            className="w-full py-3.5 rounded-lg font-semibold transition"
-            style={{
-              background: canSubmit ? C.primary : C.tabsBg,
-              color: canSubmit ? C.onPrimary : C.muted,
-              fontSize: 15, cursor: canSubmit ? 'pointer' : 'not-allowed',
-            }}>
-            Add to tracker
+          <button onClick={submit} disabled={!canSubmit} className="btn btn-primary btn-lg">
+            <IconPlus size={16} /> Add to tracker
           </button>
         </div>
       );
     }
 
-    function AllView({ problems, onDelete, onSaveCard, C }) {
+    function AllView({ problems, onDelete, onSaveCard }) {
       const [confirmDelete, setConfirmDelete] = useState(null);
       const [expanded, setExpanded] = useState(null);
 
       if (problems.length === 0) return (
-        <EmptyState title="Empty library"
-          body="Once you add problems, they'll live here. You can review the whole set and remove any you no longer want to track."
-          C={C} />
+        <EmptyState icon={<IconLayers size={22} />} title="Empty library"
+          body="Once you add problems, they'll live here. You can review the whole set and remove any you no longer want to track." />
       );
 
       const sorted = [...problems].sort((a, b) => a.next_review.localeCompare(b.next_review));
 
       return (
-        <div className="space-y-2">
-          {sorted.map((p) => {
+        <div className="stack-2">
+          {sorted.map((p, i) => {
             const daysUntil = daysBetween(todayStr(), p.next_review);
             const overdue = daysUntil < 0;
+            const dueSoon = overdue || daysUntil === 0;
             const dueLabel = overdue
               ? `${Math.abs(daysUntil)}d overdue`
               : daysUntil === 0 ? 'due today' : `in ${daysUntil}d`;
+            const isOpen = expanded === p.id;
 
             return (
-              <div key={p.id} className="rounded-lg p-3"
-                style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-                <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <button onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-                    className="font-mono font-semibold truncate text-left w-full"
-                    style={{ fontSize: 14, color: C.text }}>
-                    {expanded === p.id ? '▾' : '▸'} {p.name}
-                  </button>
-                  <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5"
-                    style={{ fontSize: 11, color: C.muted }}>
-                    <span>{p.pattern}</span><span>·</span>
-                    <span>{p.history.length}× reviewed</span><span>·</span>
-                    <span style={{
-                      color: overdue || daysUntil === 0 ? C.accent : C.muted,
-                      fontWeight: overdue || daysUntil === 0 ? 500 : 400,
-                    }}>{dueLabel}</span>
-                    {hasCard(p) && (<><span>·</span><span style={{ color: C.success }}>card</span></>)}
-                    <ProblemLink problem={p} C={C} />
-                  </div>
-                </div>
-                {confirmDelete === p.id ? (
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => { onDelete(p.id); setConfirmDelete(null); }}
-                      className="px-2 py-1 rounded"
-                      style={{ background: C.danger, color: C.onPrimary, fontSize: 11, fontWeight: 500 }}>
-                      Delete
+              <div key={p.id} className="row anim-rise" data-expanded={isOpen}
+                style={{ padding: 12, animationDelay: `${Math.min(i, 10) * 28}ms` }}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <button onClick={() => setExpanded(isOpen ? null : p.id)}
+                      className="row-toggle" aria-expanded={isOpen}>
+                      <IconChevron size={13} className="row-chevron" />
+                      <span className="mono truncate" style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</span>
                     </button>
-                    <button onClick={() => setConfirmDelete(null)}
-                      className="px-2 py-1 rounded"
-                      style={{ background: C.tabsBg, color: C.muted, fontSize: 11, fontWeight: 500 }}>
-                      Cancel
-                    </button>
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1"
+                      style={{ marginTop: 5, paddingLeft: 21, fontSize: 11, color: 'var(--muted)' }}>
+                      <span>{p.pattern}</span>
+                      <span style={{ color: 'var(--faint)' }}>·</span>
+                      <span className="tnum">{p.history.length}× reviewed</span>
+                      <span style={{ color: 'var(--faint)' }}>·</span>
+                      <span style={{ color: dueSoon ? 'var(--accent)' : 'var(--muted)', fontWeight: dueSoon ? 600 : 400 }}>
+                        {dueLabel}
+                      </span>
+                      {hasCard(p) && (
+                        <span className="pill pill-success" style={{ padding: '1px 7px', fontSize: 10 }}>
+                          <span className="dot" style={{ background: 'var(--success)', width: 4, height: 4 }} />
+                          card
+                        </span>
+                      )}
+                      <ProblemLink problem={p} />
+                    </div>
                   </div>
-                ) : (
-                  <button onClick={() => setConfirmDelete(p.id)}
-                    className="p-1 rounded transition shrink-0"
-                    style={{ color: C.faint, fontSize: 20, lineHeight: 1, width: 28, height: 28 }}
-                    aria-label="Delete problem">
-                    ×
-                  </button>
-                )}
+                  {confirmDelete === p.id ? (
+                    <div className="flex gap-1.5 anim-fade" style={{ flex: 'none' }}>
+                      <button onClick={() => { onDelete(p.id); setConfirmDelete(null); }} className="btn btn-danger btn-sm">
+                        Delete
+                      </button>
+                      <button onClick={() => setConfirmDelete(null)} className="btn btn-ghost btn-sm">
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(p.id)} className="row-danger"
+                      aria-label={`Delete ${p.name}`}>
+                      <IconTrash size={15} />
+                    </button>
+                  )}
                 </div>
-                {expanded === p.id && (
-                  <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
-                    <CardPanel problem={p} onSave={onSaveCard} C={C} />
+                {isOpen && (
+                  <div className="anim-fade" style={{ marginTop: 13, paddingTop: 13, borderTop: '1px solid var(--border)' }}>
+                    <CardPanel problem={p} onSave={onSaveCard} />
                   </div>
                 )}
               </div>
@@ -944,16 +1744,23 @@
       );
     }
 
-    function EmptyState({ title, body, cta, onCta, C }) {
+    function EmptyState({ icon, title, body, cta, onCta }) {
       return (
-        <div className="rounded-xl p-8 text-center"
-          style={{ background: C.surface, border: `1px dashed ${C.border}` }}>
-          <div className="font-semibold mb-2" style={{ fontSize: 16, color: C.text }}>{title}</div>
-          <div className="mb-5" style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>{body}</div>
+        <div className="card dashed anim-rise" style={{ padding: '40px 28px', textAlign: 'center', boxShadow: 'none' }}>
+          {icon && (
+            <div className="flex items-center justify-center"
+              style={{
+                width: 46, height: 46, margin: '0 auto 16px', borderRadius: 999,
+                background: 'var(--tabs-bg)', color: 'var(--muted)',
+              }}>
+              {icon}
+            </div>
+          )}
+          <div className="display" style={{ fontSize: 23, lineHeight: 1.2, marginBottom: 8 }}>{title}</div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.65, margin: '0 auto', maxWidth: 320 }}>{body}</p>
           {cta && onCta && (
-            <button onClick={onCta} className="px-4 py-2 rounded-lg font-medium transition"
-              style={{ background: C.primary, color: C.onPrimary, fontSize: 13 }}>
-              {cta}
+            <button onClick={onCta} className="btn btn-primary" style={{ marginTop: 20 }}>
+              <IconPlus size={14} /> {cta}
             </button>
           )}
         </div>
