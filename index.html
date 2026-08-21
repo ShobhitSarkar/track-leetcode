@@ -1012,7 +1012,7 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_ZqPnxAT_g8he81dVRvbRfw_SZZeFPI9';
     // ============================================================
 
-    const { useState, useEffect, useRef, useCallback } = React;
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
     function showFatal(msg) {
       document.getElementById('root').innerHTML = `
@@ -1049,8 +1049,205 @@
       'Two Pointers', 'Sliding Window', 'Hash Map', 'Binary Search',
       'BFS', 'DFS', 'DP', 'Backtracking', 'Greedy', 'Monotonic Stack',
       'Prefix Sum', 'Heap', 'Union Find', 'Trie', 'Linked List',
-      'Tree', 'Graph', 'Bit Manipulation'
+      'Tree', 'Graph', 'Bit Manipulation', 'Stack', 'Intervals', 'Math'
     ];
+
+    // Curated catalog of well-known LeetCode problems used by the Discover view. The
+    // slug is derived from the name via slugify() — anything whose LeetCode URL doesn't
+    // match that convention would need an explicit slug field, but every entry below
+    // does. Difficulty and patterns feed both the filter chips and the suggestion
+    // ranking; a problem can carry more than one pattern when it's a fair example of
+    // several.
+    const PROBLEM_CATALOG = [
+      // Arrays & Hashing
+      { name: 'Contains Duplicate', difficulty: 'Easy', patterns: ['Hash Map'] },
+      { name: 'Valid Anagram', difficulty: 'Easy', patterns: ['Hash Map'] },
+      { name: 'Two Sum', difficulty: 'Easy', patterns: ['Hash Map'] },
+      { name: 'Group Anagrams', difficulty: 'Medium', patterns: ['Hash Map'] },
+      { name: 'Top K Frequent Elements', difficulty: 'Medium', patterns: ['Heap', 'Hash Map'] },
+      { name: 'Encode and Decode Strings', difficulty: 'Medium', patterns: ['Hash Map'] },
+      { name: 'Product of Array Except Self', difficulty: 'Medium', patterns: ['Prefix Sum'] },
+      { name: 'Valid Sudoku', difficulty: 'Medium', patterns: ['Hash Map'] },
+      { name: 'Longest Consecutive Sequence', difficulty: 'Medium', patterns: ['Hash Map'] },
+
+      // Two Pointers
+      { name: 'Valid Palindrome', difficulty: 'Easy', patterns: ['Two Pointers'] },
+      { name: 'Two Sum II Input Array Is Sorted', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: '3Sum', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: 'Container With Most Water', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: 'Trapping Rain Water', difficulty: 'Hard', patterns: ['Two Pointers'] },
+
+      // Sliding Window
+      { name: 'Best Time to Buy and Sell Stock', difficulty: 'Easy', patterns: ['Sliding Window'] },
+      { name: 'Longest Substring Without Repeating Characters', difficulty: 'Medium', patterns: ['Sliding Window'] },
+      { name: 'Longest Repeating Character Replacement', difficulty: 'Medium', patterns: ['Sliding Window'] },
+      { name: 'Permutation in String', difficulty: 'Medium', patterns: ['Sliding Window'] },
+      { name: 'Minimum Window Substring', difficulty: 'Hard', patterns: ['Sliding Window'] },
+      { name: 'Sliding Window Maximum', difficulty: 'Hard', patterns: ['Monotonic Stack', 'Sliding Window'] },
+
+      // Stack
+      { name: 'Valid Parentheses', difficulty: 'Easy', patterns: ['Stack'] },
+      { name: 'Min Stack', difficulty: 'Medium', patterns: ['Stack'] },
+      { name: 'Evaluate Reverse Polish Notation', difficulty: 'Medium', patterns: ['Stack'] },
+      { name: 'Generate Parentheses', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Daily Temperatures', difficulty: 'Medium', patterns: ['Monotonic Stack'] },
+      { name: 'Car Fleet', difficulty: 'Medium', patterns: ['Stack'] },
+      { name: 'Largest Rectangle in Histogram', difficulty: 'Hard', patterns: ['Monotonic Stack'] },
+
+      // Binary Search
+      { name: 'Binary Search', difficulty: 'Easy', patterns: ['Binary Search'] },
+      { name: 'Search a 2D Matrix', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Koko Eating Bananas', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Find Minimum in Rotated Sorted Array', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Search in Rotated Sorted Array', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Time Based Key Value Store', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Median of Two Sorted Arrays', difficulty: 'Hard', patterns: ['Binary Search'] },
+
+      // Linked List
+      { name: 'Reverse Linked List', difficulty: 'Easy', patterns: ['Linked List'] },
+      { name: 'Merge Two Sorted Lists', difficulty: 'Easy', patterns: ['Linked List'] },
+      { name: 'Linked List Cycle', difficulty: 'Easy', patterns: ['Two Pointers', 'Linked List'] },
+      { name: 'Reorder List', difficulty: 'Medium', patterns: ['Linked List'] },
+      { name: 'Remove Nth Node From End of List', difficulty: 'Medium', patterns: ['Two Pointers', 'Linked List'] },
+      { name: 'Copy List With Random Pointer', difficulty: 'Medium', patterns: ['Linked List'] },
+      { name: 'Add Two Numbers', difficulty: 'Medium', patterns: ['Linked List'] },
+      { name: 'Find the Duplicate Number', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: 'LRU Cache', difficulty: 'Medium', patterns: ['Linked List', 'Hash Map'] },
+      { name: 'Merge K Sorted Lists', difficulty: 'Hard', patterns: ['Heap', 'Linked List'] },
+      { name: 'Reverse Nodes in K Group', difficulty: 'Hard', patterns: ['Linked List'] },
+
+      // Trees
+      { name: 'Invert Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Maximum Depth of Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Diameter of Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Balanced Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Same Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Subtree of Another Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Lowest Common Ancestor of a Binary Search Tree', difficulty: 'Medium', patterns: ['Tree'] },
+      { name: 'Binary Tree Level Order Traversal', difficulty: 'Medium', patterns: ['BFS', 'Tree'] },
+      { name: 'Binary Tree Right Side View', difficulty: 'Medium', patterns: ['BFS', 'Tree'] },
+      { name: 'Count Good Nodes In Binary Tree', difficulty: 'Medium', patterns: ['DFS', 'Tree'] },
+      { name: 'Validate Binary Search Tree', difficulty: 'Medium', patterns: ['Tree', 'DFS'] },
+      { name: 'Kth Smallest Element in a BST', difficulty: 'Medium', patterns: ['Tree', 'DFS'] },
+      { name: 'Construct Binary Tree From Preorder And Inorder Traversal', difficulty: 'Medium', patterns: ['Tree'] },
+      { name: 'Binary Tree Maximum Path Sum', difficulty: 'Hard', patterns: ['Tree', 'DFS'] },
+      { name: 'Serialize and Deserialize Binary Tree', difficulty: 'Hard', patterns: ['Tree', 'BFS'] },
+
+      // Tries
+      { name: 'Implement Trie Prefix Tree', difficulty: 'Medium', patterns: ['Trie'] },
+      { name: 'Design Add and Search Words Data Structure', difficulty: 'Medium', patterns: ['Trie'] },
+      { name: 'Word Search II', difficulty: 'Hard', patterns: ['Trie', 'Backtracking'] },
+
+      // Heap
+      { name: 'Kth Largest Element in a Stream', difficulty: 'Easy', patterns: ['Heap'] },
+      { name: 'Last Stone Weight', difficulty: 'Easy', patterns: ['Heap'] },
+      { name: 'K Closest Points to Origin', difficulty: 'Medium', patterns: ['Heap'] },
+      { name: 'Kth Largest Element In An Array', difficulty: 'Medium', patterns: ['Heap'] },
+      { name: 'Task Scheduler', difficulty: 'Medium', patterns: ['Heap', 'Greedy'] },
+      { name: 'Design Twitter', difficulty: 'Medium', patterns: ['Heap', 'Hash Map'] },
+      { name: 'Find Median From Data Stream', difficulty: 'Hard', patterns: ['Heap'] },
+
+      // Backtracking
+      { name: 'Subsets', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Combination Sum', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Permutations', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Subsets II', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Combination Sum II', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Word Search', difficulty: 'Medium', patterns: ['Backtracking', 'DFS'] },
+      { name: 'Palindrome Partitioning', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Letter Combinations of a Phone Number', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'N Queens', difficulty: 'Hard', patterns: ['Backtracking'] },
+
+      // Graphs
+      { name: 'Number of Islands', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Clone Graph', difficulty: 'Medium', patterns: ['Graph', 'DFS'] },
+      { name: 'Max Area of Island', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Pacific Atlantic Water Flow', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Surrounded Regions', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Rotting Oranges', difficulty: 'Medium', patterns: ['BFS', 'Graph'] },
+      { name: 'Walls And Gates', difficulty: 'Medium', patterns: ['BFS', 'Graph'] },
+      { name: 'Course Schedule', difficulty: 'Medium', patterns: ['Graph', 'DFS'] },
+      { name: 'Course Schedule II', difficulty: 'Medium', patterns: ['Graph', 'DFS'] },
+      { name: 'Redundant Connection', difficulty: 'Medium', patterns: ['Union Find', 'Graph'] },
+      { name: 'Number of Connected Components in an Undirected Graph', difficulty: 'Medium', patterns: ['Union Find', 'Graph'] },
+      { name: 'Graph Valid Tree', difficulty: 'Medium', patterns: ['Union Find', 'Graph'] },
+      { name: 'Word Ladder', difficulty: 'Hard', patterns: ['BFS', 'Graph'] },
+
+      // Advanced Graphs
+      { name: 'Reconstruct Itinerary', difficulty: 'Hard', patterns: ['Graph', 'DFS'] },
+      { name: 'Min Cost to Connect All Points', difficulty: 'Medium', patterns: ['Graph', 'Union Find'] },
+      { name: 'Network Delay Time', difficulty: 'Medium', patterns: ['Graph'] },
+      { name: 'Swim In Rising Water', difficulty: 'Hard', patterns: ['Graph', 'Binary Search'] },
+      { name: 'Alien Dictionary', difficulty: 'Hard', patterns: ['Graph'] },
+      { name: 'Cheapest Flights Within K Stops', difficulty: 'Medium', patterns: ['Graph'] },
+
+      // DP
+      { name: 'Climbing Stairs', difficulty: 'Easy', patterns: ['DP'] },
+      { name: 'Min Cost Climbing Stairs', difficulty: 'Easy', patterns: ['DP'] },
+      { name: 'House Robber', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'House Robber II', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Palindromic Substring', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Palindromic Substrings', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Decode Ways', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Coin Change', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Maximum Product Subarray', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Word Break', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Increasing Subsequence', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Partition Equal Subset Sum', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Unique Paths', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Common Subsequence', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Best Time to Buy and Sell Stock With Cooldown', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Coin Change II', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Target Sum', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Interleaving String', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Increasing Path In a Matrix', difficulty: 'Hard', patterns: ['DP', 'DFS'] },
+      { name: 'Distinct Subsequences', difficulty: 'Hard', patterns: ['DP'] },
+      { name: 'Edit Distance', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Burst Balloons', difficulty: 'Hard', patterns: ['DP'] },
+      { name: 'Regular Expression Matching', difficulty: 'Hard', patterns: ['DP'] },
+
+      // Greedy
+      { name: 'Maximum Subarray', difficulty: 'Medium', patterns: ['Greedy', 'DP'] },
+      { name: 'Jump Game', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Jump Game II', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Gas Station', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Hand of Straights', difficulty: 'Medium', patterns: ['Greedy', 'Heap'] },
+      { name: 'Merge Triplets to Form Target Triplet', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Partition Labels', difficulty: 'Medium', patterns: ['Greedy', 'Two Pointers'] },
+      { name: 'Valid Parenthesis String', difficulty: 'Medium', patterns: ['Greedy'] },
+
+      // Intervals
+      { name: 'Insert Interval', difficulty: 'Medium', patterns: ['Intervals'] },
+      { name: 'Merge Intervals', difficulty: 'Medium', patterns: ['Intervals'] },
+      { name: 'Non Overlapping Intervals', difficulty: 'Medium', patterns: ['Intervals', 'Greedy'] },
+      { name: 'Meeting Rooms', difficulty: 'Easy', patterns: ['Intervals'] },
+      { name: 'Meeting Rooms II', difficulty: 'Medium', patterns: ['Intervals', 'Heap'] },
+      { name: 'Minimum Interval to Include Each Query', difficulty: 'Hard', patterns: ['Intervals', 'Heap'] },
+
+      // Math & Geometry
+      { name: 'Rotate Image', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Spiral Matrix', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Set Matrix Zeroes', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Happy Number', difficulty: 'Easy', patterns: ['Math', 'Two Pointers'] },
+      { name: 'Plus One', difficulty: 'Easy', patterns: ['Math'] },
+      { name: 'Pow(x, n)', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Multiply Strings', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Detect Squares', difficulty: 'Medium', patterns: ['Hash Map', 'Math'] },
+
+      // Bit Manipulation
+      { name: 'Single Number', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Number of 1 Bits', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Counting Bits', difficulty: 'Easy', patterns: ['Bit Manipulation', 'DP'] },
+      { name: 'Reverse Bits', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Missing Number', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Sum of Two Integers', difficulty: 'Medium', patterns: ['Bit Manipulation'] },
+      { name: 'Reverse Integer', difficulty: 'Medium', patterns: ['Math'] },
+    ];
+
+    const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
+    // Rough anchor for the "step up" hint — the median LC problem is Medium, and if a
+    // user has cleared a bunch of Mediums with a Solid rating we can nudge them to Hard.
+    const DIFFICULTY_RANK = { Easy: 1, Medium: 2, Hard: 3 };
 
     const todayStr = () => {
       const d = new Date();
@@ -1149,9 +1346,16 @@
     const IconAlert = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5M12 16.2v.1" /></Svg>;
     const IconX = (p) => <Svg {...p}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
     const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" /></Svg>;
+    const IconCompass = (p) => (
+      <Svg {...p}>
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="m15.5 8.5-2 5-5 2 2-5 5-2z" />
+      </Svg>
+    );
 
     const TABS = [
       { key: 'today', label: 'Today', Icon: IconInbox },
+      { key: 'discover', label: 'Discover', Icon: IconCompass },
       { key: 'add', label: 'Add', Icon: IconPlus },
       { key: 'all', label: 'All', Icon: IconLayers },
     ];
@@ -1164,6 +1368,12 @@
         sub: (s) => (s.due === 0
           ? 'Nothing to review right now.'
           : 'Try to recall each one before revealing the card.'),
+      },
+      discover: {
+        title: 'Discover',
+        sub: (s) => (s.total === 0
+          ? 'Fresh problems, sorted so you build on what you know and try new patterns.'
+          : 'Suggested from a curated set, filtered against what you\'ve already tracked.'),
       },
       add: {
         title: 'Add a problem',
@@ -1533,6 +1743,7 @@
       const isWide = useMediaQuery(WIDE);
       const [problems, setProblems] = useState([]);
       const [view, setView] = useState('today');
+      const [addPrefill, setAddPrefill] = useState(null);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [menuOpen, setMenuOpen] = useState(false);
@@ -1668,13 +1879,33 @@
         </div>
       );
 
+      const startLogging = (prob) => {
+        setAddPrefill({
+          name: prob.name,
+          pattern: (prob.patterns && prob.patterns[0]) || '',
+          url: leetcodeUrlFor(prob.name),
+        });
+        setView('add');
+      };
+
+      const goTo = (next) => {
+        if (next !== 'add') setAddPrefill(null);
+        setView(next);
+      };
+
       const views = (
         <div className="view-area">
           {view === 'today' && (
             <TodayView due={dueToday} onRate={rateProblem} onSaveCard={saveCard}
-              hasProblems={problems.length > 0} onGoAdd={() => setView('add')} />
+              hasProblems={problems.length > 0} onGoAdd={() => goTo('add')}
+              onGoDiscover={() => goTo('discover')} />
           )}
-          {view === 'add' && <AddView onAdd={addProblem} />}
+          {view === 'discover' && (
+            <DiscoverView problems={problems} onLog={startLogging} />
+          )}
+          {view === 'add' && (
+            <AddView onAdd={addProblem} prefill={addPrefill} onConsumePrefill={() => setAddPrefill(null)} />
+          )}
           {view === 'all' && (
             <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} />
           )}
@@ -1706,7 +1937,7 @@
                 {TABS.map((tab) => {
                   const count = tab.key === 'today' ? stats.due : tab.key === 'all' ? stats.total : null;
                   return (
-                    <button key={tab.key} onClick={() => setView(tab.key)} className="rail-nav-btn"
+                    <button key={tab.key} onClick={() => goTo(tab.key)} className="rail-nav-btn"
                       aria-current={view === tab.key ? 'page' : undefined}>
                       <tab.Icon size={15} />
                       {tab.label}
@@ -1784,9 +2015,12 @@
                 <section className="anim-rise" style={{ marginBottom: 26 }}>{hero}</section>
 
                 <div className="seg anim-rise" role="tablist" aria-label="Views" style={{ marginBottom: 22, animationDelay: '40ms' }}>
-                  <div className="seg-thumb" style={{ transform: `translateX(${Math.max(activeIndex, 0) * 100}%)` }} />
+                  <div className="seg-thumb" style={{
+                    width: `calc((100% - 8px) / ${TABS.length})`,
+                    transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`,
+                  }} />
                   {TABS.map((tab) => (
-                    <button key={tab.key} onClick={() => setView(tab.key)} className="seg-btn"
+                    <button key={tab.key} onClick={() => goTo(tab.key)} className="seg-btn"
                       role="tab" aria-selected={view === tab.key}>
                       {tab.label}
                     </button>
@@ -1848,7 +2082,7 @@
       );
     }
 
-    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd }) {
+    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd, onGoDiscover }) {
       if (!hasProblems) return (
         <EmptyState icon={<IconSparkle size={22} />} title="Nothing tracked yet"
           body="Add the first problem you've solved recently. Rate it honestly — that rating sets when you'll see it again."
@@ -1856,8 +2090,8 @@
       );
       if (due.length === 0) return (
         <EmptyState icon={<IconInbox size={22} />} title="Clear queue"
-          body="No reviews due today. Add new problems as you solve them, or come back tomorrow."
-          cta="Add a problem" onCta={onGoAdd} />
+          body="No reviews due today. Try something new from Discover, or add a problem you just solved."
+          cta="Discover problems" onCta={onGoDiscover} ctaIcon={<IconCompass size={14} />} />
       );
       return (
         <div className="grid-review">
@@ -2066,14 +2300,224 @@
       );
     }
 
-    function AddView({ onAdd }) {
-      const [name, setName] = useState('');
-      const [pattern, setPattern] = useState('');
+    // Suggestion engine — pure so it's testable in the console. Returns unsolved catalog
+    // entries scored against the user's existing library, plus a short "reasons" list per
+    // entry that the UI displays as one-line context.
+    //
+    // Score components:
+    //   +3 per pattern overlap with a pattern the user has already tracked (familiarity)
+    //   +2 for a pattern the user has done a lot of (their top 2 patterns), on top of the
+    //      base familiarity bonus, so DP-heavy users see more DP
+    //   +1.5 for a difficulty step that matches where they are (one step above their most
+    //      common cleared difficulty), so someone doing Easies gets Mediums, not Hards
+    //   +1 baseline for anything new, so patterns the user has never touched still surface
+    //
+    // The scores are relative — the raw number is not shown to the user. Only the
+    // ordering and the reasons matter.
+    function buildSuggestions(catalog, userProblems) {
+      const solvedSlugs = new Set(userProblems.map((p) => slugify(p.name)));
+      const patternCounts = new Map();
+      const difficultyCounts = { Easy: 0, Medium: 0, Hard: 0 };
+
+      for (const p of userProblems) {
+        const pat = (p.pattern || '').trim();
+        if (pat) patternCounts.set(pat, (patternCounts.get(pat) || 0) + 1);
+        // Infer difficulty by matching against the catalog — the tracker itself doesn't
+        // record difficulty, so this is the only signal we have.
+        const cat = catalog.find((c) => slugify(c.name) === slugify(p.name));
+        if (cat) difficultyCounts[cat.difficulty]++;
+      }
+
+      const topPatterns = [...patternCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 2)
+        .map(([pat]) => pat);
+
+      const totalRanked = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
+      let comfortRank = 1; // Easy by default
+      if (totalRanked > 0) {
+        const mostDone = Object.entries(difficultyCounts)
+          .sort((a, b) => b[1] - a[1])[0][0];
+        comfortRank = DIFFICULTY_RANK[mostDone];
+      }
+      const stepUpRank = Math.min(comfortRank + 1, 3);
+
+      const suggestions = catalog
+        .filter((c) => !solvedSlugs.has(slugify(c.name)))
+        .map((c) => {
+          let score = 1;
+          const reasons = [];
+
+          const overlap = c.patterns.filter((pat) => patternCounts.has(pat));
+          if (overlap.length > 0) {
+            score += 3 * overlap.length;
+            const topOverlap = c.patterns.filter((pat) => topPatterns.includes(pat));
+            if (topOverlap.length > 0) score += 2;
+            reasons.push(`Practices ${overlap.join(', ')}`);
+          } else {
+            reasons.push(`New pattern: ${c.patterns.join(', ')}`);
+          }
+
+          const rank = DIFFICULTY_RANK[c.difficulty];
+          if (totalRanked > 0 && rank === stepUpRank && stepUpRank > comfortRank) {
+            score += 1.5;
+            reasons.push('Steps up in difficulty');
+          }
+
+          return { ...c, score, reasons };
+        });
+
+      suggestions.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        // Stable-ish deterministic fallback so the list doesn't jitter between renders.
+        return a.name.localeCompare(b.name);
+      });
+
+      return { suggestions, patternCounts, topPatterns };
+    }
+
+    function DifficultyPill({ level }) {
+      const bg = level === 'Easy' ? 'var(--success-soft)'
+        : level === 'Medium' ? 'var(--accent-soft)' : 'var(--danger-soft)';
+      const fg = level === 'Easy' ? 'var(--success)'
+        : level === 'Medium' ? 'var(--accent)' : 'var(--danger)';
+      return (
+        <span className="pill" style={{
+          background: bg, color: fg, borderColor: 'transparent',
+          fontWeight: 600, letterSpacing: '0.02em',
+        }}>{level}</span>
+      );
+    }
+
+    function SuggestionCard({ prob, onLog, index }) {
+      const href = leetcodeUrlFor(prob.name);
+      return (
+        <div className="card anim-rise" style={{ padding: 16, animationDelay: `${Math.min(index, 8) * 30}ms` }}>
+          <div className="flex items-start justify-between gap-3" style={{ marginBottom: 10 }}>
+            <div className="mono" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              {prob.name}
+            </div>
+            <DifficultyPill level={prob.difficulty} />
+          </div>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5" style={{ marginBottom: 12 }}>
+            {prob.patterns.map((pat) => (
+              <span key={pat} className="pill" style={{ fontSize: 10.5 }}>{pat}</span>
+            ))}
+            {href && (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="link">
+                <IconExternal size={11} /> open
+              </a>
+            )}
+          </div>
+          {prob.reasons.length > 0 && (
+            <div style={{ color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.5, marginBottom: 12 }}>
+              {prob.reasons.join(' · ')}
+            </div>
+          )}
+          <button onClick={() => onLog(prob)} className="btn btn-quiet btn-sm">
+            <IconPlus size={13} /> Log as solved
+          </button>
+        </div>
+      );
+    }
+
+    function DiscoverView({ problems, onLog }) {
+      const [difficulty, setDifficulty] = useState('All');
+      const [focus, setFocus] = useState('all'); // 'all' | 'familiar' | 'new'
+
+      const { suggestions, patternCounts } = useMemo(
+        () => buildSuggestions(PROBLEM_CATALOG, problems),
+        [problems]
+      );
+
+      const filtered = suggestions.filter((s) => {
+        if (difficulty !== 'All' && s.difficulty !== difficulty) return false;
+        const hasFamiliar = s.patterns.some((pat) => patternCounts.has(pat));
+        if (focus === 'familiar' && !hasFamiliar) return false;
+        if (focus === 'new' && hasFamiliar) return false;
+        return true;
+      });
+
+      // Cap the list — 60 suggestions is more than enough to browse and keeps the
+      // page cheap to render on a phone. The filters above still see the full set.
+      const shown = filtered.slice(0, 60);
+
+      if (suggestions.length === 0) {
+        return (
+          <EmptyState icon={<IconCompass size={22} />} title="You've tracked them all"
+            body="Every problem in the built-in catalog is already in your library. Add anything else you find and it won't show up here again." />
+        );
+      }
+
+      const FOCUS_TABS = [
+        { key: 'all', label: 'All' },
+        { key: 'familiar', label: 'Familiar patterns' },
+        { key: 'new', label: 'New patterns' },
+      ];
+
+      return (
+        <div className="anim-rise">
+          <div className="stack-3" style={{ marginBottom: 18 }}>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Focus</div>
+              <div className="flex flex-wrap gap-1.5">
+                {FOCUS_TABS.map((t) => (
+                  <button key={t.key} onClick={() => setFocus(t.key)}
+                    className="chip" aria-pressed={focus === t.key}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Difficulty</div>
+              <div className="flex flex-wrap gap-1.5">
+                {['All', ...DIFFICULTIES].map((d) => (
+                  <button key={d} onClick={() => setDifficulty(d)}
+                    className="chip" aria-pressed={difficulty === d}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ color: 'var(--faint)', fontSize: 11.5 }}>
+              {filtered.length} {filtered.length === 1 ? 'suggestion' : 'suggestions'}
+              {filtered.length > shown.length && ` · showing top ${shown.length}`}
+            </div>
+          </div>
+
+          {shown.length === 0 ? (
+            <EmptyState icon={<IconCompass size={22} />} title="No matches"
+              body="Nothing in the catalog matches those filters. Loosen them and try again." />
+          ) : (
+            <div className="grid-review">
+              {shown.map((s, i) => (
+                <SuggestionCard key={s.name} prob={s} onLog={onLog} index={i} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function AddView({ onAdd, prefill, onConsumePrefill }) {
+      const [name, setName] = useState(prefill?.name || '');
+      const [pattern, setPattern] = useState(prefill?.pattern || '');
       const [rating, setRating] = useState(4);
       const [solution, setSolution] = useState('');
       const [notes, setNotes] = useState('');
-      const [url, setUrl] = useState('');
+      const [url, setUrl] = useState(prefill?.url || '');
       const canSubmit = name.trim().length > 0 && pattern.trim().length > 0;
+
+      // A prefill can arrive after mount (Discover -> Add) — apply it once and clear the
+      // signal so subsequent renders don't clobber user edits or re-fire on re-render.
+      useEffect(() => {
+        if (!prefill) return;
+        setName(prefill.name || '');
+        setPattern(prefill.pattern || '');
+        setUrl(prefill.url || '');
+        onConsumePrefill && onConsumePrefill();
+      }, [prefill]);
 
       const submit = () => {
         if (!canSubmit) return;
@@ -2230,7 +2674,7 @@
       );
     }
 
-    function EmptyState({ icon, title, body, cta, onCta }) {
+    function EmptyState({ icon, title, body, cta, onCta, ctaIcon }) {
       return (
         <div className="card dashed anim-rise" style={{ padding: '40px 28px', textAlign: 'center', boxShadow: 'none' }}>
           {icon && (
@@ -2246,7 +2690,7 @@
           <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.65, margin: '0 auto', maxWidth: 320 }}>{body}</p>
           {cta && onCta && (
             <button onClick={onCta} className="btn btn-primary" style={{ marginTop: 20 }}>
-              <IconPlus size={14} /> {cta}
+              {ctaIcon || <IconPlus size={14} />} {cta}
             </button>
           )}
         </div>
