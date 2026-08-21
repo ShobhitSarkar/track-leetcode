@@ -1245,9 +1245,46 @@
     ];
 
     const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
-    // Rough anchor for the "step up" hint — the median LC problem is Medium, and if a
-    // user has cleared a bunch of Mediums with a Solid rating we can nudge them to Hard.
     const DIFFICULTY_RANK = { Easy: 1, Medium: 2, Hard: 3 };
+
+    // Slugs of problems that show up disproportionately often in real interview loops
+    // (Blind 75 core + a few outside it that FAANG asks constantly — LRU Cache, Add Two
+    // Numbers, Trapping Rain Water, Daily Temperatures, K Closest Points, etc.). These
+    // get weighted heavily in the personalization engine so the queue leans toward
+    // "problems you'll actually be asked" instead of just "problems that exist".
+    const INTERVIEW_HIGH_FREQ = new Set([
+      'two-sum', 'valid-parentheses', 'merge-two-sorted-lists', 'best-time-to-buy-and-sell-stock',
+      'valid-palindrome', 'valid-anagram', 'contains-duplicate', 'binary-search',
+      'reverse-linked-list', 'invert-binary-tree', 'maximum-depth-of-binary-tree',
+      'linked-list-cycle', 'climbing-stairs', 'same-tree', 'single-number', 'missing-number',
+      'number-of-1-bits', 'reverse-bits', 'happy-number', 'diameter-of-binary-tree',
+      'maximum-subarray', 'product-of-array-except-self', '3sum', 'container-with-most-water',
+      'longest-substring-without-repeating-characters', 'group-anagrams', 'top-k-frequent-elements',
+      'longest-consecutive-sequence', 'longest-repeating-character-replacement',
+      'daily-temperatures', 'longest-palindromic-substring', 'palindromic-substrings',
+      'decode-ways', 'coin-change', 'longest-increasing-subsequence', 'longest-common-subsequence',
+      'word-break', 'house-robber', 'house-robber-ii', 'jump-game', 'unique-paths',
+      'maximum-product-subarray', 'find-minimum-in-rotated-sorted-array',
+      'search-in-rotated-sorted-array', 'rotate-image', 'spiral-matrix', 'set-matrix-zeroes',
+      'add-two-numbers', 'remove-nth-node-from-end-of-list', 'reorder-list',
+      'copy-list-with-random-pointer', 'merge-k-sorted-lists', 'lru-cache',
+      'binary-tree-level-order-traversal', 'binary-tree-right-side-view',
+      'lowest-common-ancestor-of-a-binary-search-tree', 'validate-binary-search-tree',
+      'kth-smallest-element-in-a-bst', 'binary-tree-maximum-path-sum',
+      'serialize-and-deserialize-binary-tree',
+      'construct-binary-tree-from-preorder-and-inorder-traversal', 'subtree-of-another-tree',
+      'implement-trie-prefix-tree', 'word-search', 'number-of-islands', 'clone-graph',
+      'course-schedule', 'rotting-oranges', 'pacific-atlantic-water-flow',
+      'merge-intervals', 'insert-interval', 'meeting-rooms', 'meeting-rooms-ii',
+      'non-overlapping-intervals', 'subsets', 'permutations', 'combination-sum',
+      'letter-combinations-of-a-phone-number', 'generate-parentheses',
+      'k-closest-points-to-origin', 'kth-largest-element-in-an-array',
+      'find-median-from-data-stream', 'minimum-window-substring', 'trapping-rain-water',
+      'encode-and-decode-strings', 'sliding-window-maximum', 'largest-rectangle-in-histogram',
+    ]);
+    const frequencyOf = (name) => (INTERVIEW_HIGH_FREQ.has(slugify(name)) ? 3 : 2);
+    // Human label for the frequency badge on a card.
+    const frequencyLabel = (f) => (f === 3 ? 'Interview classic' : 'Also asked');
 
     const todayStr = () => {
       const d = new Date();
@@ -2300,80 +2337,250 @@
       );
     }
 
-    // Suggestion engine — pure so it's testable in the console. Returns unsolved catalog
-    // entries scored against the user's existing library, plus a short "reasons" list per
-    // entry that the UI displays as one-line context.
+    // ============================================================
+    // Personalization engine
     //
-    // Score components:
-    //   +3 per pattern overlap with a pattern the user has already tracked (familiarity)
-    //   +2 for a pattern the user has done a lot of (their top 2 patterns), on top of the
-    //      base familiarity bonus, so DP-heavy users see more DP
-    //   +1.5 for a difficulty step that matches where they are (one step above their most
-    //      common cleared difficulty), so someone doing Easies gets Mediums, not Hards
-    //   +1 baseline for anything new, so patterns the user has never touched still surface
+    // The Discover view isn't a catalog browser — it's a coach. It reads your solved
+    // history (with the ratings you gave), builds a per-pattern mastery picture, and
+    // then produces a small, opinionated set of "do this next" picks grouped into
+    // categories. Interview frequency (frequencyOf) is weighted heavily so what you
+    // see leans toward what interviewers actually ask.
     //
-    // The scores are relative — the raw number is not shown to the user. Only the
-    // ordering and the reasons matter.
-    function buildSuggestions(catalog, userProblems) {
-      const solvedSlugs = new Set(userProblems.map((p) => slugify(p.name)));
-      const patternCounts = new Map();
-      const difficultyCounts = { Easy: 0, Medium: 0, Hard: 0 };
+    // Everything below is pure — analyseHistory + personalisedPicks take the catalog
+    // and your problems array and return plain data. Easy to reason about in the
+    // console, and easy to reshape as we tune the heuristics.
+    // ============================================================
+
+    // Per-pattern signal from the user's tracked problems.
+    //   count               how many problems in this pattern the user has logged
+    //   avgRating           mean of the LATEST rating on each; lower is stronger
+    //   strongCount         # rated Trivial or Solid on latest attempt
+    //   struggling          latest logged rating in this pattern was Struggled hard (4)
+    //   maxDifficultyStrong hardest difficulty (rank) they've cleared with rating ≤ 2
+    function analyseHistory(catalog, userProblems) {
+      const catBySlug = new Map(catalog.map((c) => [slugify(c.name), c]));
+      const solvedSlugs = new Set();
+      const solvedByPattern = new Map();
+      const difficultyCleared = { Easy: 0, Medium: 0, Hard: 0 };
 
       for (const p of userProblems) {
-        const pat = (p.pattern || '').trim();
-        if (pat) patternCounts.set(pat, (patternCounts.get(pat) || 0) + 1);
-        // Infer difficulty by matching against the catalog — the tracker itself doesn't
-        // record difficulty, so this is the only signal we have.
-        const cat = catalog.find((c) => slugify(c.name) === slugify(p.name));
-        if (cat) difficultyCounts[cat.difficulty]++;
+        const slug = slugify(p.name);
+        solvedSlugs.add(slug);
+        const pattern = (p.pattern || '').trim();
+        const latest = p.history[p.history.length - 1];
+        const rating = latest ? latest.rating : 4;
+        const cat = catBySlug.get(slug);
+
+        if (pattern) {
+          if (!solvedByPattern.has(pattern)) solvedByPattern.set(pattern, []);
+          solvedByPattern.get(pattern).push({ name: p.name, rating, catalog: cat });
+        }
+        if (cat && rating <= 2) difficultyCleared[cat.difficulty]++;
       }
 
-      const topPatterns = [...patternCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 2)
-        .map(([pat]) => pat);
-
-      const totalRanked = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
-      let comfortRank = 1; // Easy by default
-      if (totalRanked > 0) {
-        const mostDone = Object.entries(difficultyCounts)
-          .sort((a, b) => b[1] - a[1])[0][0];
-        comfortRank = DIFFICULTY_RANK[mostDone];
+      const patternStats = new Map();
+      for (const [pat, solved] of solvedByPattern) {
+        const count = solved.length;
+        const avgRating = solved.reduce((s, x) => s + x.rating, 0) / count;
+        const strongCount = solved.filter((x) => x.rating <= 2).length;
+        const struggling = solved[solved.length - 1].rating === 4;
+        const maxDifficultyStrong = solved
+          .filter((x) => x.rating <= 2 && x.catalog)
+          .reduce((max, x) => Math.max(max, DIFFICULTY_RANK[x.catalog.difficulty]), 0);
+        patternStats.set(pat, { count, avgRating, strongCount, struggling, maxDifficultyStrong });
       }
-      const stepUpRank = Math.min(comfortRank + 1, 3);
 
-      const suggestions = catalog
-        .filter((c) => !solvedSlugs.has(slugify(c.name)))
-        .map((c) => {
-          let score = 1;
-          const reasons = [];
+      return { solvedSlugs, patternStats, difficultyCleared };
+    }
 
-          const overlap = c.patterns.filter((pat) => patternCounts.has(pat));
-          if (overlap.length > 0) {
-            score += 3 * overlap.length;
-            const topOverlap = c.patterns.filter((pat) => topPatterns.includes(pat));
-            if (topOverlap.length > 0) score += 2;
-            reasons.push(`Practices ${overlap.join(', ')}`);
-          } else {
-            reasons.push(`New pattern: ${c.patterns.join(', ')}`);
-          }
-
-          const rank = DIFFICULTY_RANK[c.difficulty];
-          if (totalRanked > 0 && rank === stepUpRank && stepUpRank > comfortRank) {
-            score += 1.5;
-            reasons.push('Steps up in difficulty');
-          }
-
-          return { ...c, score, reasons };
-        });
-
-      suggestions.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        // Stable-ish deterministic fallback so the list doesn't jitter between renders.
+    // Sort catalog picks the way a coach would: interview classics first, then within
+    // each frequency tier prefer whichever difficulty the caller is aiming at, breaking
+    // final ties by name so the ordering is stable across renders.
+    const bestPickFor = (candidates, targetRank) => {
+      const scored = [...candidates].sort((a, b) => {
+        if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+        const aDist = Math.abs(DIFFICULTY_RANK[a.difficulty] - targetRank);
+        const bDist = Math.abs(DIFFICULTY_RANK[b.difficulty] - targetRank);
+        if (aDist !== bDist) return aDist - bDist;
         return a.name.localeCompare(b.name);
       });
+      return scored[0] || null;
+    };
 
-      return { suggestions, patternCounts, topPatterns };
+    // The main recommender. Returns an ordered list of sections, each with a title,
+    // subtitle and a small (2-3) list of picks. Every pick carries a `reason` string
+    // built from the actual signal that surfaced it.
+    function personalisedPicks(catalog, userProblems) {
+      const { solvedSlugs, patternStats, difficultyCleared } = analyseHistory(catalog, userProblems);
+      const eligible = catalog
+        .filter((c) => !solvedSlugs.has(slugify(c.name)))
+        .map((c) => ({ ...c, frequency: frequencyOf(c.name) }));
+
+      const sections = [];
+      const used = new Set();
+      const take = (pick, reason) => {
+        if (!pick || used.has(slugify(pick.name))) return null;
+        used.add(slugify(pick.name));
+        return { ...pick, reason };
+      };
+
+      // Cold start — brand new user with nothing logged yet. Bootstrap with the most
+      // canonical warm-ups so the first Add they log isn't random.
+      if (userProblems.length === 0) {
+        const starters = eligible
+          .filter((c) => c.frequency === 3 && c.difficulty === 'Easy')
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .slice(0, 4)
+          .map((c) => ({ ...c, reason: 'A canonical interview warm-up — start here.' }));
+        if (starters.length) {
+          sections.push({
+            key: 'start',
+            title: 'Start here',
+            subtitle: "You haven't logged anything yet. These four are asked in almost every interview loop.",
+            picks: starters,
+          });
+        }
+        return sections;
+      }
+
+      // Overall difficulty comfort — lets us aim "next" picks at the right level rather
+      // than dumping Hards on someone still building fluency in Mediums.
+      const totalCleared = difficultyCleared.Easy + difficultyCleared.Medium + difficultyCleared.Hard;
+      const comfortRank = totalCleared === 0
+        ? 1
+        : difficultyCleared.Hard >= 3 ? 3
+        : difficultyCleared.Medium >= 3 ? 2
+        : 1;
+
+      // 1. Reinforce — most recent attempt in a pattern was Struggled hard. Back off
+      //    to something easier in the SAME pattern so the pattern gets re-anchored.
+      const strugglingPatterns = [...patternStats.entries()]
+        .filter(([, s]) => s.struggling)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 2);
+      const reinforcePicks = [];
+      for (const [pat, stats] of strugglingPatterns) {
+        const target = Math.max(1, stats.maxDifficultyStrong || 1);
+        const pool = eligible.filter((c) => c.patterns.includes(pat));
+        const chosen = bestPickFor(pool, target);
+        if (!chosen) continue;
+        const pick = take(chosen,
+          `You struggled with a recent ${pat} problem — this ${chosen.difficulty} rebuilds the pattern.`);
+        if (pick) reinforcePicks.push(pick);
+      }
+      if (reinforcePicks.length) sections.push({
+        key: 'reinforce',
+        title: 'Reinforce',
+        subtitle: 'You rated a recent one Struggled hard. Back up and re-anchor the pattern before pushing forward.',
+        picks: reinforcePicks,
+      });
+
+      // 2. Next up — patterns you're actively building (some solves, not struggling).
+      //    Aim one step above the hardest you've cleared with rating ≤ Solid in that
+      //    pattern, so the difficulty curve tracks per-pattern skill, not overall.
+      const buildingPatterns = [...patternStats.entries()]
+        .filter(([, s]) => !s.struggling && s.count >= 1)
+        .sort((a, b) => {
+          // Patterns you've done the most of first, tie-broken by average strength.
+          if (b[1].strongCount !== a[1].strongCount) return b[1].strongCount - a[1].strongCount;
+          return a[1].avgRating - b[1].avgRating;
+        })
+        .slice(0, 3);
+      const nextPicks = [];
+      for (const [pat, stats] of buildingPatterns) {
+        const base = stats.maxDifficultyStrong || 1;
+        const target = Math.min(base + (stats.strongCount >= 2 ? 1 : 0), 3);
+        const pool = eligible.filter((c) => c.patterns.includes(pat));
+        const chosen = bestPickFor(pool, target);
+        if (!chosen) continue;
+        const pick = take(chosen,
+          `Builds on your ${stats.count}× ${pat} — next step at ${chosen.difficulty}.`);
+        if (pick) nextPicks.push(pick);
+      }
+      if (nextPicks.length) sections.push({
+        key: 'next',
+        title: 'Next up for you',
+        subtitle: 'The natural progression from the patterns you\'re actively practicing, tuned to how far you\'ve gone in each.',
+        picks: nextPicks,
+      });
+
+      // 3. Level up — patterns you've clearly internalised (≥3 solved, strong ratings)
+      //    and haven't yet hit the ceiling of. Hand them a Hard in that pattern, but
+      //    only if it's interview-relevant (freq ≥ 2 — everything in the catalog is).
+      const strongPatterns = [...patternStats.entries()]
+        .filter(([, s]) => s.count >= 3 && s.avgRating <= 2 && s.maxDifficultyStrong < 3)
+        .sort((a, b) => a[1].avgRating - b[1].avgRating)
+        .slice(0, 2);
+      const levelPicks = [];
+      for (const [pat, stats] of strongPatterns) {
+        const target = Math.min(stats.maxDifficultyStrong + 1, 3);
+        const pool = eligible
+          .filter((c) => c.patterns.includes(pat) && DIFFICULTY_RANK[c.difficulty] === target);
+        const pick = take(bestPickFor(pool, target),
+          `You're strong in ${pat} (${stats.strongCount} clean solves) — time for a ${DIFFICULTIES[target - 1]}.`);
+        if (pick) levelPicks.push(pick);
+      }
+      if (levelPicks.length) sections.push({
+        key: 'level',
+        title: 'Level up',
+        subtitle: 'Patterns you\'ve been consistent in — push into the next tier.',
+        picks: levelPicks,
+      });
+
+      // 4. Interview must-haves — high-frequency classics you haven't touched yet.
+      //    Prefer those that share a pattern with something you've done, so the pick
+      //    isn't just "here's a random Blind 75 problem", it's one you can pattern-
+      //    match onto existing skill.
+      const canonPool = eligible.filter((c) => c.frequency === 3 && !used.has(slugify(c.name)));
+      const canonScored = canonPool.map((c) => {
+        const familiar = c.patterns.some((p) => patternStats.has(p)) ? 1 : 0;
+        return { c, familiar, distFromComfort: Math.abs(DIFFICULTY_RANK[c.difficulty] - comfortRank) };
+      }).sort((a, b) => {
+        if (b.familiar !== a.familiar) return b.familiar - a.familiar;
+        if (a.distFromComfort !== b.distFromComfort) return a.distFromComfort - b.distFromComfort;
+        return a.c.name.localeCompare(b.c.name);
+      });
+      const canonPicks = [];
+      for (const { c } of canonScored) {
+        if (canonPicks.length >= 2) break;
+        const familiar = c.patterns.filter((p) => patternStats.has(p));
+        const reason = familiar.length > 0
+          ? `Very frequently asked — pairs with your ${familiar[0]} practice.`
+          : 'Very frequently asked in real interviews.';
+        const pick = take(c, reason);
+        if (pick) canonPicks.push(pick);
+      }
+      if (canonPicks.length) sections.push({
+        key: 'canon',
+        title: 'Interview must-haves',
+        subtitle: 'Classics that come up in FAANG-tier loops — worth clearing early.',
+        picks: canonPicks,
+      });
+
+      // 5. Explore — only kicks in once the user has some breadth (≥2 patterns).
+      //    Introduces a foundational problem in a pattern they haven't touched, so
+      //    growth stays two-dimensional (depth + breadth), not just depth.
+      if (patternStats.size >= 2) {
+        const touched = new Set(patternStats.keys());
+        const untouched = [...new Set(eligible.flatMap((c) => c.patterns))]
+          .filter((p) => !touched.has(p));
+        const explorePicks = [];
+        for (const pat of untouched) {
+          if (explorePicks.length >= 2) break;
+          const pool = eligible.filter((c) => c.patterns.includes(pat));
+          const pick = take(bestPickFor(pool, 1),
+            `Introduces ${pat} — a pattern you haven't touched yet.`);
+          if (pick) explorePicks.push(pick);
+        }
+        if (explorePicks.length) sections.push({
+          key: 'explore',
+          title: 'Explore a new pattern',
+          subtitle: "You've got breadth already — this widens it with the easiest way in.",
+          picks: explorePicks,
+        });
+      }
+
+      return sections;
     }
 
     function DifficultyPill({ level }) {
@@ -2399,19 +2606,27 @@
             </div>
             <DifficultyPill level={prob.difficulty} />
           </div>
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5" style={{ marginBottom: 12 }}>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5" style={{ marginBottom: 10 }}>
             {prob.patterns.map((pat) => (
               <span key={pat} className="pill" style={{ fontSize: 10.5 }}>{pat}</span>
             ))}
+            {prob.frequency === 3 && (
+              <span className="pill pill-accent" style={{ fontSize: 10.5 }}>
+                <IconSparkle size={9} /> {frequencyLabel(prob.frequency)}
+              </span>
+            )}
             {href && (
               <a href={href} target="_blank" rel="noopener noreferrer" className="link">
                 <IconExternal size={11} /> open
               </a>
             )}
           </div>
-          {prob.reasons.length > 0 && (
-            <div style={{ color: 'var(--muted)', fontSize: 11.5, lineHeight: 1.5, marginBottom: 12 }}>
-              {prob.reasons.join(' · ')}
+          {prob.reason && (
+            <div style={{
+              color: 'var(--muted)', fontSize: 12, lineHeight: 1.55, marginBottom: 12,
+              paddingLeft: 10, borderLeft: '2px solid var(--border-strong)',
+            }}>
+              {prob.reason}
             </div>
           )}
           <button onClick={() => onLog(prob)} className="btn btn-quiet btn-sm">
@@ -2422,80 +2637,35 @@
     }
 
     function DiscoverView({ problems, onLog }) {
-      const [difficulty, setDifficulty] = useState('All');
-      const [focus, setFocus] = useState('all'); // 'all' | 'familiar' | 'new'
-
-      const { suggestions, patternCounts } = useMemo(
-        () => buildSuggestions(PROBLEM_CATALOG, problems),
+      const sections = useMemo(
+        () => personalisedPicks(PROBLEM_CATALOG, problems),
         [problems]
       );
 
-      const filtered = suggestions.filter((s) => {
-        if (difficulty !== 'All' && s.difficulty !== difficulty) return false;
-        const hasFamiliar = s.patterns.some((pat) => patternCounts.has(pat));
-        if (focus === 'familiar' && !hasFamiliar) return false;
-        if (focus === 'new' && hasFamiliar) return false;
-        return true;
-      });
-
-      // Cap the list — 60 suggestions is more than enough to browse and keeps the
-      // page cheap to render on a phone. The filters above still see the full set.
-      const shown = filtered.slice(0, 60);
-
-      if (suggestions.length === 0) {
+      if (sections.length === 0) {
         return (
-          <EmptyState icon={<IconCompass size={22} />} title="You've tracked them all"
-            body="Every problem in the built-in catalog is already in your library. Add anything else you find and it won't show up here again." />
+          <EmptyState icon={<IconCompass size={22} />} title="No suggestions right now"
+            body="Either you've cleared the built-in catalog, or the engine can't find a clean next step. Log a few more solves and it'll pick things up." />
         );
       }
 
-      const FOCUS_TABS = [
-        { key: 'all', label: 'All' },
-        { key: 'familiar', label: 'Familiar patterns' },
-        { key: 'new', label: 'New patterns' },
-      ];
-
       return (
-        <div className="anim-rise">
-          <div className="stack-3" style={{ marginBottom: 18 }}>
-            <div>
-              <div className="eyebrow" style={{ marginBottom: 8 }}>Focus</div>
-              <div className="flex flex-wrap gap-1.5">
-                {FOCUS_TABS.map((t) => (
-                  <button key={t.key} onClick={() => setFocus(t.key)}
-                    className="chip" aria-pressed={focus === t.key}>
-                    {t.label}
-                  </button>
+        <div className="anim-rise" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+          {sections.map((section, si) => (
+            <section key={section.key} style={{ animationDelay: `${si * 60}ms` }} className="anim-rise">
+              <div style={{ marginBottom: 14 }}>
+                <div className="eyebrow" style={{ marginBottom: 6 }}>{section.title}</div>
+                <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.55, maxWidth: 560 }}>
+                  {section.subtitle}
+                </div>
+              </div>
+              <div className="grid-review">
+                {section.picks.map((pick, i) => (
+                  <SuggestionCard key={pick.name} prob={pick} onLog={onLog} index={i} />
                 ))}
               </div>
-            </div>
-            <div>
-              <div className="eyebrow" style={{ marginBottom: 8 }}>Difficulty</div>
-              <div className="flex flex-wrap gap-1.5">
-                {['All', ...DIFFICULTIES].map((d) => (
-                  <button key={d} onClick={() => setDifficulty(d)}
-                    className="chip" aria-pressed={difficulty === d}>
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ color: 'var(--faint)', fontSize: 11.5 }}>
-              {filtered.length} {filtered.length === 1 ? 'suggestion' : 'suggestions'}
-              {filtered.length > shown.length && ` · showing top ${shown.length}`}
-            </div>
-          </div>
-
-          {shown.length === 0 ? (
-            <EmptyState icon={<IconCompass size={22} />} title="No matches"
-              body="Nothing in the catalog matches those filters. Loosen them and try again." />
-          ) : (
-            <div className="grid-review">
-              {shown.map((s, i) => (
-                <SuggestionCard key={s.name} prob={s} onLog={onLog} index={i} />
-              ))}
-            </div>
-          )}
+            </section>
+          ))}
         </div>
       );
     }
