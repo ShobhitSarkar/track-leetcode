@@ -1012,7 +1012,7 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_ZqPnxAT_g8he81dVRvbRfw_SZZeFPI9';
     // ============================================================
 
-    const { useState, useEffect, useRef, useCallback } = React;
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
     function showFatal(msg) {
       document.getElementById('root').innerHTML = `
@@ -1049,8 +1049,242 @@
       'Two Pointers', 'Sliding Window', 'Hash Map', 'Binary Search',
       'BFS', 'DFS', 'DP', 'Backtracking', 'Greedy', 'Monotonic Stack',
       'Prefix Sum', 'Heap', 'Union Find', 'Trie', 'Linked List',
-      'Tree', 'Graph', 'Bit Manipulation'
+      'Tree', 'Graph', 'Bit Manipulation', 'Stack', 'Intervals', 'Math'
     ];
+
+    // Curated catalog of well-known LeetCode problems used by the Discover view. The
+    // slug is derived from the name via slugify() — anything whose LeetCode URL doesn't
+    // match that convention would need an explicit slug field, but every entry below
+    // does. Difficulty and patterns feed both the filter chips and the suggestion
+    // ranking; a problem can carry more than one pattern when it's a fair example of
+    // several.
+    const PROBLEM_CATALOG = [
+      // Arrays & Hashing
+      { name: 'Contains Duplicate', difficulty: 'Easy', patterns: ['Hash Map'] },
+      { name: 'Valid Anagram', difficulty: 'Easy', patterns: ['Hash Map'] },
+      { name: 'Two Sum', difficulty: 'Easy', patterns: ['Hash Map'] },
+      { name: 'Group Anagrams', difficulty: 'Medium', patterns: ['Hash Map'] },
+      { name: 'Top K Frequent Elements', difficulty: 'Medium', patterns: ['Heap', 'Hash Map'] },
+      { name: 'Encode and Decode Strings', difficulty: 'Medium', patterns: ['Hash Map'] },
+      { name: 'Product of Array Except Self', difficulty: 'Medium', patterns: ['Prefix Sum'] },
+      { name: 'Valid Sudoku', difficulty: 'Medium', patterns: ['Hash Map'] },
+      { name: 'Longest Consecutive Sequence', difficulty: 'Medium', patterns: ['Hash Map'] },
+
+      // Two Pointers
+      { name: 'Valid Palindrome', difficulty: 'Easy', patterns: ['Two Pointers'] },
+      { name: 'Two Sum II Input Array Is Sorted', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: '3Sum', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: 'Container With Most Water', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: 'Trapping Rain Water', difficulty: 'Hard', patterns: ['Two Pointers'] },
+
+      // Sliding Window
+      { name: 'Best Time to Buy and Sell Stock', difficulty: 'Easy', patterns: ['Sliding Window'] },
+      { name: 'Longest Substring Without Repeating Characters', difficulty: 'Medium', patterns: ['Sliding Window'] },
+      { name: 'Longest Repeating Character Replacement', difficulty: 'Medium', patterns: ['Sliding Window'] },
+      { name: 'Permutation in String', difficulty: 'Medium', patterns: ['Sliding Window'] },
+      { name: 'Minimum Window Substring', difficulty: 'Hard', patterns: ['Sliding Window'] },
+      { name: 'Sliding Window Maximum', difficulty: 'Hard', patterns: ['Monotonic Stack', 'Sliding Window'] },
+
+      // Stack
+      { name: 'Valid Parentheses', difficulty: 'Easy', patterns: ['Stack'] },
+      { name: 'Min Stack', difficulty: 'Medium', patterns: ['Stack'] },
+      { name: 'Evaluate Reverse Polish Notation', difficulty: 'Medium', patterns: ['Stack'] },
+      { name: 'Generate Parentheses', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Daily Temperatures', difficulty: 'Medium', patterns: ['Monotonic Stack'] },
+      { name: 'Car Fleet', difficulty: 'Medium', patterns: ['Stack'] },
+      { name: 'Largest Rectangle in Histogram', difficulty: 'Hard', patterns: ['Monotonic Stack'] },
+
+      // Binary Search
+      { name: 'Binary Search', difficulty: 'Easy', patterns: ['Binary Search'] },
+      { name: 'Search a 2D Matrix', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Koko Eating Bananas', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Find Minimum in Rotated Sorted Array', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Search in Rotated Sorted Array', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Time Based Key Value Store', difficulty: 'Medium', patterns: ['Binary Search'] },
+      { name: 'Median of Two Sorted Arrays', difficulty: 'Hard', patterns: ['Binary Search'] },
+
+      // Linked List
+      { name: 'Reverse Linked List', difficulty: 'Easy', patterns: ['Linked List'] },
+      { name: 'Merge Two Sorted Lists', difficulty: 'Easy', patterns: ['Linked List'] },
+      { name: 'Linked List Cycle', difficulty: 'Easy', patterns: ['Two Pointers', 'Linked List'] },
+      { name: 'Reorder List', difficulty: 'Medium', patterns: ['Linked List'] },
+      { name: 'Remove Nth Node From End of List', difficulty: 'Medium', patterns: ['Two Pointers', 'Linked List'] },
+      { name: 'Copy List With Random Pointer', difficulty: 'Medium', patterns: ['Linked List'] },
+      { name: 'Add Two Numbers', difficulty: 'Medium', patterns: ['Linked List'] },
+      { name: 'Find the Duplicate Number', difficulty: 'Medium', patterns: ['Two Pointers'] },
+      { name: 'LRU Cache', difficulty: 'Medium', patterns: ['Linked List', 'Hash Map'] },
+      { name: 'Merge K Sorted Lists', difficulty: 'Hard', patterns: ['Heap', 'Linked List'] },
+      { name: 'Reverse Nodes in K Group', difficulty: 'Hard', patterns: ['Linked List'] },
+
+      // Trees
+      { name: 'Invert Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Maximum Depth of Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Diameter of Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Balanced Binary Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Same Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Subtree of Another Tree', difficulty: 'Easy', patterns: ['Tree', 'DFS'] },
+      { name: 'Lowest Common Ancestor of a Binary Search Tree', difficulty: 'Medium', patterns: ['Tree'] },
+      { name: 'Binary Tree Level Order Traversal', difficulty: 'Medium', patterns: ['BFS', 'Tree'] },
+      { name: 'Binary Tree Right Side View', difficulty: 'Medium', patterns: ['BFS', 'Tree'] },
+      { name: 'Count Good Nodes In Binary Tree', difficulty: 'Medium', patterns: ['DFS', 'Tree'] },
+      { name: 'Validate Binary Search Tree', difficulty: 'Medium', patterns: ['Tree', 'DFS'] },
+      { name: 'Kth Smallest Element in a BST', difficulty: 'Medium', patterns: ['Tree', 'DFS'] },
+      { name: 'Construct Binary Tree From Preorder And Inorder Traversal', difficulty: 'Medium', patterns: ['Tree'] },
+      { name: 'Binary Tree Maximum Path Sum', difficulty: 'Hard', patterns: ['Tree', 'DFS'] },
+      { name: 'Serialize and Deserialize Binary Tree', difficulty: 'Hard', patterns: ['Tree', 'BFS'] },
+
+      // Tries
+      { name: 'Implement Trie Prefix Tree', difficulty: 'Medium', patterns: ['Trie'] },
+      { name: 'Design Add and Search Words Data Structure', difficulty: 'Medium', patterns: ['Trie'] },
+      { name: 'Word Search II', difficulty: 'Hard', patterns: ['Trie', 'Backtracking'] },
+
+      // Heap
+      { name: 'Kth Largest Element in a Stream', difficulty: 'Easy', patterns: ['Heap'] },
+      { name: 'Last Stone Weight', difficulty: 'Easy', patterns: ['Heap'] },
+      { name: 'K Closest Points to Origin', difficulty: 'Medium', patterns: ['Heap'] },
+      { name: 'Kth Largest Element In An Array', difficulty: 'Medium', patterns: ['Heap'] },
+      { name: 'Task Scheduler', difficulty: 'Medium', patterns: ['Heap', 'Greedy'] },
+      { name: 'Design Twitter', difficulty: 'Medium', patterns: ['Heap', 'Hash Map'] },
+      { name: 'Find Median From Data Stream', difficulty: 'Hard', patterns: ['Heap'] },
+
+      // Backtracking
+      { name: 'Subsets', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Combination Sum', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Permutations', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Subsets II', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Combination Sum II', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Word Search', difficulty: 'Medium', patterns: ['Backtracking', 'DFS'] },
+      { name: 'Palindrome Partitioning', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'Letter Combinations of a Phone Number', difficulty: 'Medium', patterns: ['Backtracking'] },
+      { name: 'N Queens', difficulty: 'Hard', patterns: ['Backtracking'] },
+
+      // Graphs
+      { name: 'Number of Islands', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Clone Graph', difficulty: 'Medium', patterns: ['Graph', 'DFS'] },
+      { name: 'Max Area of Island', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Pacific Atlantic Water Flow', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Surrounded Regions', difficulty: 'Medium', patterns: ['DFS', 'Graph'] },
+      { name: 'Rotting Oranges', difficulty: 'Medium', patterns: ['BFS', 'Graph'] },
+      { name: 'Walls And Gates', difficulty: 'Medium', patterns: ['BFS', 'Graph'] },
+      { name: 'Course Schedule', difficulty: 'Medium', patterns: ['Graph', 'DFS'] },
+      { name: 'Course Schedule II', difficulty: 'Medium', patterns: ['Graph', 'DFS'] },
+      { name: 'Redundant Connection', difficulty: 'Medium', patterns: ['Union Find', 'Graph'] },
+      { name: 'Number of Connected Components in an Undirected Graph', difficulty: 'Medium', patterns: ['Union Find', 'Graph'] },
+      { name: 'Graph Valid Tree', difficulty: 'Medium', patterns: ['Union Find', 'Graph'] },
+      { name: 'Word Ladder', difficulty: 'Hard', patterns: ['BFS', 'Graph'] },
+
+      // Advanced Graphs
+      { name: 'Reconstruct Itinerary', difficulty: 'Hard', patterns: ['Graph', 'DFS'] },
+      { name: 'Min Cost to Connect All Points', difficulty: 'Medium', patterns: ['Graph', 'Union Find'] },
+      { name: 'Network Delay Time', difficulty: 'Medium', patterns: ['Graph'] },
+      { name: 'Swim In Rising Water', difficulty: 'Hard', patterns: ['Graph', 'Binary Search'] },
+      { name: 'Alien Dictionary', difficulty: 'Hard', patterns: ['Graph'] },
+      { name: 'Cheapest Flights Within K Stops', difficulty: 'Medium', patterns: ['Graph'] },
+
+      // DP
+      { name: 'Climbing Stairs', difficulty: 'Easy', patterns: ['DP'] },
+      { name: 'Min Cost Climbing Stairs', difficulty: 'Easy', patterns: ['DP'] },
+      { name: 'House Robber', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'House Robber II', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Palindromic Substring', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Palindromic Substrings', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Decode Ways', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Coin Change', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Maximum Product Subarray', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Word Break', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Increasing Subsequence', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Partition Equal Subset Sum', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Unique Paths', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Common Subsequence', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Best Time to Buy and Sell Stock With Cooldown', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Coin Change II', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Target Sum', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Interleaving String', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Longest Increasing Path In a Matrix', difficulty: 'Hard', patterns: ['DP', 'DFS'] },
+      { name: 'Distinct Subsequences', difficulty: 'Hard', patterns: ['DP'] },
+      { name: 'Edit Distance', difficulty: 'Medium', patterns: ['DP'] },
+      { name: 'Burst Balloons', difficulty: 'Hard', patterns: ['DP'] },
+      { name: 'Regular Expression Matching', difficulty: 'Hard', patterns: ['DP'] },
+
+      // Greedy
+      { name: 'Maximum Subarray', difficulty: 'Medium', patterns: ['Greedy', 'DP'] },
+      { name: 'Jump Game', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Jump Game II', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Gas Station', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Hand of Straights', difficulty: 'Medium', patterns: ['Greedy', 'Heap'] },
+      { name: 'Merge Triplets to Form Target Triplet', difficulty: 'Medium', patterns: ['Greedy'] },
+      { name: 'Partition Labels', difficulty: 'Medium', patterns: ['Greedy', 'Two Pointers'] },
+      { name: 'Valid Parenthesis String', difficulty: 'Medium', patterns: ['Greedy'] },
+
+      // Intervals
+      { name: 'Insert Interval', difficulty: 'Medium', patterns: ['Intervals'] },
+      { name: 'Merge Intervals', difficulty: 'Medium', patterns: ['Intervals'] },
+      { name: 'Non Overlapping Intervals', difficulty: 'Medium', patterns: ['Intervals', 'Greedy'] },
+      { name: 'Meeting Rooms', difficulty: 'Easy', patterns: ['Intervals'] },
+      { name: 'Meeting Rooms II', difficulty: 'Medium', patterns: ['Intervals', 'Heap'] },
+      { name: 'Minimum Interval to Include Each Query', difficulty: 'Hard', patterns: ['Intervals', 'Heap'] },
+
+      // Math & Geometry
+      { name: 'Rotate Image', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Spiral Matrix', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Set Matrix Zeroes', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Happy Number', difficulty: 'Easy', patterns: ['Math', 'Two Pointers'] },
+      { name: 'Plus One', difficulty: 'Easy', patterns: ['Math'] },
+      { name: 'Pow(x, n)', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Multiply Strings', difficulty: 'Medium', patterns: ['Math'] },
+      { name: 'Detect Squares', difficulty: 'Medium', patterns: ['Hash Map', 'Math'] },
+
+      // Bit Manipulation
+      { name: 'Single Number', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Number of 1 Bits', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Counting Bits', difficulty: 'Easy', patterns: ['Bit Manipulation', 'DP'] },
+      { name: 'Reverse Bits', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Missing Number', difficulty: 'Easy', patterns: ['Bit Manipulation'] },
+      { name: 'Sum of Two Integers', difficulty: 'Medium', patterns: ['Bit Manipulation'] },
+      { name: 'Reverse Integer', difficulty: 'Medium', patterns: ['Math'] },
+    ];
+
+    const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
+    const DIFFICULTY_RANK = { Easy: 1, Medium: 2, Hard: 3 };
+
+    // Slugs of problems that show up disproportionately often in real interview loops
+    // (Blind 75 core + a few outside it that FAANG asks constantly — LRU Cache, Add Two
+    // Numbers, Trapping Rain Water, Daily Temperatures, K Closest Points, etc.). These
+    // get weighted heavily in the personalization engine so the queue leans toward
+    // "problems you'll actually be asked" instead of just "problems that exist".
+    const INTERVIEW_HIGH_FREQ = new Set([
+      'two-sum', 'valid-parentheses', 'merge-two-sorted-lists', 'best-time-to-buy-and-sell-stock',
+      'valid-palindrome', 'valid-anagram', 'contains-duplicate', 'binary-search',
+      'reverse-linked-list', 'invert-binary-tree', 'maximum-depth-of-binary-tree',
+      'linked-list-cycle', 'climbing-stairs', 'same-tree', 'single-number', 'missing-number',
+      'number-of-1-bits', 'reverse-bits', 'happy-number', 'diameter-of-binary-tree',
+      'maximum-subarray', 'product-of-array-except-self', '3sum', 'container-with-most-water',
+      'longest-substring-without-repeating-characters', 'group-anagrams', 'top-k-frequent-elements',
+      'longest-consecutive-sequence', 'longest-repeating-character-replacement',
+      'daily-temperatures', 'longest-palindromic-substring', 'palindromic-substrings',
+      'decode-ways', 'coin-change', 'longest-increasing-subsequence', 'longest-common-subsequence',
+      'word-break', 'house-robber', 'house-robber-ii', 'jump-game', 'unique-paths',
+      'maximum-product-subarray', 'find-minimum-in-rotated-sorted-array',
+      'search-in-rotated-sorted-array', 'rotate-image', 'spiral-matrix', 'set-matrix-zeroes',
+      'add-two-numbers', 'remove-nth-node-from-end-of-list', 'reorder-list',
+      'copy-list-with-random-pointer', 'merge-k-sorted-lists', 'lru-cache',
+      'binary-tree-level-order-traversal', 'binary-tree-right-side-view',
+      'lowest-common-ancestor-of-a-binary-search-tree', 'validate-binary-search-tree',
+      'kth-smallest-element-in-a-bst', 'binary-tree-maximum-path-sum',
+      'serialize-and-deserialize-binary-tree',
+      'construct-binary-tree-from-preorder-and-inorder-traversal', 'subtree-of-another-tree',
+      'implement-trie-prefix-tree', 'word-search', 'number-of-islands', 'clone-graph',
+      'course-schedule', 'rotting-oranges', 'pacific-atlantic-water-flow',
+      'merge-intervals', 'insert-interval', 'meeting-rooms', 'meeting-rooms-ii',
+      'non-overlapping-intervals', 'subsets', 'permutations', 'combination-sum',
+      'letter-combinations-of-a-phone-number', 'generate-parentheses',
+      'k-closest-points-to-origin', 'kth-largest-element-in-an-array',
+      'find-median-from-data-stream', 'minimum-window-substring', 'trapping-rain-water',
+      'encode-and-decode-strings', 'sliding-window-maximum', 'largest-rectangle-in-histogram',
+    ]);
+    const frequencyOf = (name) => (INTERVIEW_HIGH_FREQ.has(slugify(name)) ? 3 : 2);
+    // Human label for the frequency badge on a card.
+    const frequencyLabel = (f) => (f === 3 ? 'Interview classic' : 'Also asked');
 
     const todayStr = () => {
       const d = new Date();
@@ -1149,9 +1383,16 @@
     const IconAlert = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5M12 16.2v.1" /></Svg>;
     const IconX = (p) => <Svg {...p}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
     const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" /></Svg>;
+    const IconCompass = (p) => (
+      <Svg {...p}>
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="m15.5 8.5-2 5-5 2 2-5 5-2z" />
+      </Svg>
+    );
 
     const TABS = [
       { key: 'today', label: 'Today', Icon: IconInbox },
+      { key: 'discover', label: 'Discover', Icon: IconCompass },
       { key: 'add', label: 'Add', Icon: IconPlus },
       { key: 'all', label: 'All', Icon: IconLayers },
     ];
@@ -1164,6 +1405,12 @@
         sub: (s) => (s.due === 0
           ? 'Nothing to review right now.'
           : 'Try to recall each one before revealing the card.'),
+      },
+      discover: {
+        title: 'Discover',
+        sub: (s) => (s.total === 0
+          ? 'Fresh problems, sorted so you build on what you know and try new patterns.'
+          : 'Suggested from a curated set, filtered against what you\'ve already tracked.'),
       },
       add: {
         title: 'Add a problem',
@@ -1533,6 +1780,7 @@
       const isWide = useMediaQuery(WIDE);
       const [problems, setProblems] = useState([]);
       const [view, setView] = useState('today');
+      const [addPrefill, setAddPrefill] = useState(null);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [menuOpen, setMenuOpen] = useState(false);
@@ -1668,13 +1916,33 @@
         </div>
       );
 
+      const startLogging = (prob) => {
+        setAddPrefill({
+          name: prob.name,
+          pattern: (prob.patterns && prob.patterns[0]) || '',
+          url: leetcodeUrlFor(prob.name),
+        });
+        setView('add');
+      };
+
+      const goTo = (next) => {
+        if (next !== 'add') setAddPrefill(null);
+        setView(next);
+      };
+
       const views = (
         <div className="view-area">
           {view === 'today' && (
             <TodayView due={dueToday} onRate={rateProblem} onSaveCard={saveCard}
-              hasProblems={problems.length > 0} onGoAdd={() => setView('add')} />
+              hasProblems={problems.length > 0} onGoAdd={() => goTo('add')}
+              onGoDiscover={() => goTo('discover')} />
           )}
-          {view === 'add' && <AddView onAdd={addProblem} />}
+          {view === 'discover' && (
+            <DiscoverView problems={problems} onLog={startLogging} />
+          )}
+          {view === 'add' && (
+            <AddView onAdd={addProblem} prefill={addPrefill} onConsumePrefill={() => setAddPrefill(null)} />
+          )}
           {view === 'all' && (
             <AllView problems={problems} onDelete={deleteProblem} onSaveCard={saveCard} />
           )}
@@ -1706,7 +1974,7 @@
                 {TABS.map((tab) => {
                   const count = tab.key === 'today' ? stats.due : tab.key === 'all' ? stats.total : null;
                   return (
-                    <button key={tab.key} onClick={() => setView(tab.key)} className="rail-nav-btn"
+                    <button key={tab.key} onClick={() => goTo(tab.key)} className="rail-nav-btn"
                       aria-current={view === tab.key ? 'page' : undefined}>
                       <tab.Icon size={15} />
                       {tab.label}
@@ -1784,9 +2052,12 @@
                 <section className="anim-rise" style={{ marginBottom: 26 }}>{hero}</section>
 
                 <div className="seg anim-rise" role="tablist" aria-label="Views" style={{ marginBottom: 22, animationDelay: '40ms' }}>
-                  <div className="seg-thumb" style={{ transform: `translateX(${Math.max(activeIndex, 0) * 100}%)` }} />
+                  <div className="seg-thumb" style={{
+                    width: `calc((100% - 8px) / ${TABS.length})`,
+                    transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`,
+                  }} />
                   {TABS.map((tab) => (
-                    <button key={tab.key} onClick={() => setView(tab.key)} className="seg-btn"
+                    <button key={tab.key} onClick={() => goTo(tab.key)} className="seg-btn"
                       role="tab" aria-selected={view === tab.key}>
                       {tab.label}
                     </button>
@@ -1848,7 +2119,7 @@
       );
     }
 
-    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd }) {
+    function TodayView({ due, onRate, onSaveCard, hasProblems, onGoAdd, onGoDiscover }) {
       if (!hasProblems) return (
         <EmptyState icon={<IconSparkle size={22} />} title="Nothing tracked yet"
           body="Add the first problem you've solved recently. Rate it honestly — that rating sets when you'll see it again."
@@ -1856,8 +2127,8 @@
       );
       if (due.length === 0) return (
         <EmptyState icon={<IconInbox size={22} />} title="Clear queue"
-          body="No reviews due today. Add new problems as you solve them, or come back tomorrow."
-          cta="Add a problem" onCta={onGoAdd} />
+          body="No reviews due today. Try something new from Discover, or add a problem you just solved."
+          cta="Discover problems" onCta={onGoDiscover} ctaIcon={<IconCompass size={14} />} />
       );
       return (
         <div className="grid-review">
@@ -2066,14 +2337,357 @@
       );
     }
 
-    function AddView({ onAdd }) {
-      const [name, setName] = useState('');
-      const [pattern, setPattern] = useState('');
+    // ============================================================
+    // Personalization engine
+    //
+    // The Discover view isn't a catalog browser — it's a coach. It reads your solved
+    // history (with the ratings you gave), builds a per-pattern mastery picture, and
+    // then produces a small, opinionated set of "do this next" picks grouped into
+    // categories. Interview frequency (frequencyOf) is weighted heavily so what you
+    // see leans toward what interviewers actually ask.
+    //
+    // Everything below is pure — analyseHistory + personalisedPicks take the catalog
+    // and your problems array and return plain data. Easy to reason about in the
+    // console, and easy to reshape as we tune the heuristics.
+    // ============================================================
+
+    // Per-pattern signal from the user's tracked problems.
+    //   count               how many problems in this pattern the user has logged
+    //   avgRating           mean of the LATEST rating on each; lower is stronger
+    //   strongCount         # rated Trivial or Solid on latest attempt
+    //   struggling          latest logged rating in this pattern was Struggled hard (4)
+    //   maxDifficultyStrong hardest difficulty (rank) they've cleared with rating ≤ 2
+    function analyseHistory(catalog, userProblems) {
+      const catBySlug = new Map(catalog.map((c) => [slugify(c.name), c]));
+      const solvedSlugs = new Set();
+      const solvedByPattern = new Map();
+      const difficultyCleared = { Easy: 0, Medium: 0, Hard: 0 };
+
+      for (const p of userProblems) {
+        const slug = slugify(p.name);
+        solvedSlugs.add(slug);
+        const pattern = (p.pattern || '').trim();
+        const latest = p.history[p.history.length - 1];
+        const rating = latest ? latest.rating : 4;
+        const cat = catBySlug.get(slug);
+
+        if (pattern) {
+          if (!solvedByPattern.has(pattern)) solvedByPattern.set(pattern, []);
+          solvedByPattern.get(pattern).push({ name: p.name, rating, catalog: cat });
+        }
+        if (cat && rating <= 2) difficultyCleared[cat.difficulty]++;
+      }
+
+      const patternStats = new Map();
+      for (const [pat, solved] of solvedByPattern) {
+        const count = solved.length;
+        const avgRating = solved.reduce((s, x) => s + x.rating, 0) / count;
+        const strongCount = solved.filter((x) => x.rating <= 2).length;
+        const struggling = solved[solved.length - 1].rating === 4;
+        const maxDifficultyStrong = solved
+          .filter((x) => x.rating <= 2 && x.catalog)
+          .reduce((max, x) => Math.max(max, DIFFICULTY_RANK[x.catalog.difficulty]), 0);
+        patternStats.set(pat, { count, avgRating, strongCount, struggling, maxDifficultyStrong });
+      }
+
+      return { solvedSlugs, patternStats, difficultyCleared };
+    }
+
+    // Sort catalog picks the way a coach would: interview classics first, then within
+    // each frequency tier prefer whichever difficulty the caller is aiming at, breaking
+    // final ties by name so the ordering is stable across renders.
+    const bestPickFor = (candidates, targetRank) => {
+      const scored = [...candidates].sort((a, b) => {
+        if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+        const aDist = Math.abs(DIFFICULTY_RANK[a.difficulty] - targetRank);
+        const bDist = Math.abs(DIFFICULTY_RANK[b.difficulty] - targetRank);
+        if (aDist !== bDist) return aDist - bDist;
+        return a.name.localeCompare(b.name);
+      });
+      return scored[0] || null;
+    };
+
+    // The main recommender. Returns an ordered list of sections, each with a title,
+    // subtitle and a small (2-3) list of picks. Every pick carries a `reason` string
+    // built from the actual signal that surfaced it.
+    function personalisedPicks(catalog, userProblems) {
+      const { solvedSlugs, patternStats, difficultyCleared } = analyseHistory(catalog, userProblems);
+      const eligible = catalog
+        .filter((c) => !solvedSlugs.has(slugify(c.name)))
+        .map((c) => ({ ...c, frequency: frequencyOf(c.name) }));
+
+      const sections = [];
+      const used = new Set();
+      const take = (pick, reason) => {
+        if (!pick || used.has(slugify(pick.name))) return null;
+        used.add(slugify(pick.name));
+        return { ...pick, reason };
+      };
+
+      // Cold start — brand new user with nothing logged yet. Bootstrap with the most
+      // canonical warm-ups so the first Add they log isn't random.
+      if (userProblems.length === 0) {
+        const starters = eligible
+          .filter((c) => c.frequency === 3 && c.difficulty === 'Easy')
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .slice(0, 4)
+          .map((c) => ({ ...c, reason: 'A canonical interview warm-up — start here.' }));
+        if (starters.length) {
+          sections.push({
+            key: 'start',
+            title: 'Start here',
+            subtitle: "You haven't logged anything yet. These four are asked in almost every interview loop.",
+            picks: starters,
+          });
+        }
+        return sections;
+      }
+
+      // Overall difficulty comfort — lets us aim "next" picks at the right level rather
+      // than dumping Hards on someone still building fluency in Mediums.
+      const totalCleared = difficultyCleared.Easy + difficultyCleared.Medium + difficultyCleared.Hard;
+      const comfortRank = totalCleared === 0
+        ? 1
+        : difficultyCleared.Hard >= 3 ? 3
+        : difficultyCleared.Medium >= 3 ? 2
+        : 1;
+
+      // 1. Reinforce — most recent attempt in a pattern was Struggled hard. Back off
+      //    to something easier in the SAME pattern so the pattern gets re-anchored.
+      const strugglingPatterns = [...patternStats.entries()]
+        .filter(([, s]) => s.struggling)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 2);
+      const reinforcePicks = [];
+      for (const [pat, stats] of strugglingPatterns) {
+        const target = Math.max(1, stats.maxDifficultyStrong || 1);
+        const pool = eligible.filter((c) => c.patterns.includes(pat));
+        const chosen = bestPickFor(pool, target);
+        if (!chosen) continue;
+        const pick = take(chosen,
+          `You struggled with a recent ${pat} problem — this ${chosen.difficulty} rebuilds the pattern.`);
+        if (pick) reinforcePicks.push(pick);
+      }
+      if (reinforcePicks.length) sections.push({
+        key: 'reinforce',
+        title: 'Reinforce',
+        subtitle: 'You rated a recent one Struggled hard. Back up and re-anchor the pattern before pushing forward.',
+        picks: reinforcePicks,
+      });
+
+      // 2. Next up — patterns you're actively building (some solves, not struggling).
+      //    Aim one step above the hardest you've cleared with rating ≤ Solid in that
+      //    pattern, so the difficulty curve tracks per-pattern skill, not overall.
+      const buildingPatterns = [...patternStats.entries()]
+        .filter(([, s]) => !s.struggling && s.count >= 1)
+        .sort((a, b) => {
+          // Patterns you've done the most of first, tie-broken by average strength.
+          if (b[1].strongCount !== a[1].strongCount) return b[1].strongCount - a[1].strongCount;
+          return a[1].avgRating - b[1].avgRating;
+        })
+        .slice(0, 3);
+      const nextPicks = [];
+      for (const [pat, stats] of buildingPatterns) {
+        const base = stats.maxDifficultyStrong || 1;
+        const target = Math.min(base + (stats.strongCount >= 2 ? 1 : 0), 3);
+        const pool = eligible.filter((c) => c.patterns.includes(pat));
+        const chosen = bestPickFor(pool, target);
+        if (!chosen) continue;
+        const pick = take(chosen,
+          `Builds on your ${stats.count}× ${pat} — next step at ${chosen.difficulty}.`);
+        if (pick) nextPicks.push(pick);
+      }
+      if (nextPicks.length) sections.push({
+        key: 'next',
+        title: 'Next up for you',
+        subtitle: 'The natural progression from the patterns you\'re actively practicing, tuned to how far you\'ve gone in each.',
+        picks: nextPicks,
+      });
+
+      // 3. Level up — patterns you've clearly internalised (≥3 solved, strong ratings)
+      //    and haven't yet hit the ceiling of. Hand them a Hard in that pattern, but
+      //    only if it's interview-relevant (freq ≥ 2 — everything in the catalog is).
+      const strongPatterns = [...patternStats.entries()]
+        .filter(([, s]) => s.count >= 3 && s.avgRating <= 2 && s.maxDifficultyStrong < 3)
+        .sort((a, b) => a[1].avgRating - b[1].avgRating)
+        .slice(0, 2);
+      const levelPicks = [];
+      for (const [pat, stats] of strongPatterns) {
+        const target = Math.min(stats.maxDifficultyStrong + 1, 3);
+        const pool = eligible
+          .filter((c) => c.patterns.includes(pat) && DIFFICULTY_RANK[c.difficulty] === target);
+        const pick = take(bestPickFor(pool, target),
+          `You're strong in ${pat} (${stats.strongCount} clean solves) — time for a ${DIFFICULTIES[target - 1]}.`);
+        if (pick) levelPicks.push(pick);
+      }
+      if (levelPicks.length) sections.push({
+        key: 'level',
+        title: 'Level up',
+        subtitle: 'Patterns you\'ve been consistent in — push into the next tier.',
+        picks: levelPicks,
+      });
+
+      // 4. Interview must-haves — high-frequency classics you haven't touched yet.
+      //    Prefer those that share a pattern with something you've done, so the pick
+      //    isn't just "here's a random Blind 75 problem", it's one you can pattern-
+      //    match onto existing skill.
+      const canonPool = eligible.filter((c) => c.frequency === 3 && !used.has(slugify(c.name)));
+      const canonScored = canonPool.map((c) => {
+        const familiar = c.patterns.some((p) => patternStats.has(p)) ? 1 : 0;
+        return { c, familiar, distFromComfort: Math.abs(DIFFICULTY_RANK[c.difficulty] - comfortRank) };
+      }).sort((a, b) => {
+        if (b.familiar !== a.familiar) return b.familiar - a.familiar;
+        if (a.distFromComfort !== b.distFromComfort) return a.distFromComfort - b.distFromComfort;
+        return a.c.name.localeCompare(b.c.name);
+      });
+      const canonPicks = [];
+      for (const { c } of canonScored) {
+        if (canonPicks.length >= 2) break;
+        const familiar = c.patterns.filter((p) => patternStats.has(p));
+        const reason = familiar.length > 0
+          ? `Very frequently asked — pairs with your ${familiar[0]} practice.`
+          : 'Very frequently asked in real interviews.';
+        const pick = take(c, reason);
+        if (pick) canonPicks.push(pick);
+      }
+      if (canonPicks.length) sections.push({
+        key: 'canon',
+        title: 'Interview must-haves',
+        subtitle: 'Classics that come up in FAANG-tier loops — worth clearing early.',
+        picks: canonPicks,
+      });
+
+      // 5. Explore — only kicks in once the user has some breadth (≥2 patterns).
+      //    Introduces a foundational problem in a pattern they haven't touched, so
+      //    growth stays two-dimensional (depth + breadth), not just depth.
+      if (patternStats.size >= 2) {
+        const touched = new Set(patternStats.keys());
+        const untouched = [...new Set(eligible.flatMap((c) => c.patterns))]
+          .filter((p) => !touched.has(p));
+        const explorePicks = [];
+        for (const pat of untouched) {
+          if (explorePicks.length >= 2) break;
+          const pool = eligible.filter((c) => c.patterns.includes(pat));
+          const pick = take(bestPickFor(pool, 1),
+            `Introduces ${pat} — a pattern you haven't touched yet.`);
+          if (pick) explorePicks.push(pick);
+        }
+        if (explorePicks.length) sections.push({
+          key: 'explore',
+          title: 'Explore a new pattern',
+          subtitle: "You've got breadth already — this widens it with the easiest way in.",
+          picks: explorePicks,
+        });
+      }
+
+      return sections;
+    }
+
+    function DifficultyPill({ level }) {
+      const bg = level === 'Easy' ? 'var(--success-soft)'
+        : level === 'Medium' ? 'var(--accent-soft)' : 'var(--danger-soft)';
+      const fg = level === 'Easy' ? 'var(--success)'
+        : level === 'Medium' ? 'var(--accent)' : 'var(--danger)';
+      return (
+        <span className="pill" style={{
+          background: bg, color: fg, borderColor: 'transparent',
+          fontWeight: 600, letterSpacing: '0.02em',
+        }}>{level}</span>
+      );
+    }
+
+    function SuggestionCard({ prob, onLog, index }) {
+      const href = leetcodeUrlFor(prob.name);
+      return (
+        <div className="card anim-rise" style={{ padding: 16, animationDelay: `${Math.min(index, 8) * 30}ms` }}>
+          <div className="flex items-start justify-between gap-3" style={{ marginBottom: 10 }}>
+            <div className="mono" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word' }}>
+              {prob.name}
+            </div>
+            <DifficultyPill level={prob.difficulty} />
+          </div>
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5" style={{ marginBottom: 10 }}>
+            {prob.patterns.map((pat) => (
+              <span key={pat} className="pill" style={{ fontSize: 10.5 }}>{pat}</span>
+            ))}
+            {prob.frequency === 3 && (
+              <span className="pill pill-accent" style={{ fontSize: 10.5 }}>
+                <IconSparkle size={9} /> {frequencyLabel(prob.frequency)}
+              </span>
+            )}
+            {href && (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="link">
+                <IconExternal size={11} /> open
+              </a>
+            )}
+          </div>
+          {prob.reason && (
+            <div style={{
+              color: 'var(--muted)', fontSize: 12, lineHeight: 1.55, marginBottom: 12,
+              paddingLeft: 10, borderLeft: '2px solid var(--border-strong)',
+            }}>
+              {prob.reason}
+            </div>
+          )}
+          <button onClick={() => onLog(prob)} className="btn btn-quiet btn-sm">
+            <IconPlus size={13} /> Log as solved
+          </button>
+        </div>
+      );
+    }
+
+    function DiscoverView({ problems, onLog }) {
+      const sections = useMemo(
+        () => personalisedPicks(PROBLEM_CATALOG, problems),
+        [problems]
+      );
+
+      if (sections.length === 0) {
+        return (
+          <EmptyState icon={<IconCompass size={22} />} title="No suggestions right now"
+            body="Either you've cleared the built-in catalog, or the engine can't find a clean next step. Log a few more solves and it'll pick things up." />
+        );
+      }
+
+      return (
+        <div className="anim-rise" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+          {sections.map((section, si) => (
+            <section key={section.key} style={{ animationDelay: `${si * 60}ms` }} className="anim-rise">
+              <div style={{ marginBottom: 14 }}>
+                <div className="eyebrow" style={{ marginBottom: 6 }}>{section.title}</div>
+                <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.55, maxWidth: 560 }}>
+                  {section.subtitle}
+                </div>
+              </div>
+              <div className="grid-review">
+                {section.picks.map((pick, i) => (
+                  <SuggestionCard key={pick.name} prob={pick} onLog={onLog} index={i} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      );
+    }
+
+    function AddView({ onAdd, prefill, onConsumePrefill }) {
+      const [name, setName] = useState(prefill?.name || '');
+      const [pattern, setPattern] = useState(prefill?.pattern || '');
       const [rating, setRating] = useState(4);
       const [solution, setSolution] = useState('');
       const [notes, setNotes] = useState('');
-      const [url, setUrl] = useState('');
+      const [url, setUrl] = useState(prefill?.url || '');
       const canSubmit = name.trim().length > 0 && pattern.trim().length > 0;
+
+      // A prefill can arrive after mount (Discover -> Add) — apply it once and clear the
+      // signal so subsequent renders don't clobber user edits or re-fire on re-render.
+      useEffect(() => {
+        if (!prefill) return;
+        setName(prefill.name || '');
+        setPattern(prefill.pattern || '');
+        setUrl(prefill.url || '');
+        onConsumePrefill && onConsumePrefill();
+      }, [prefill]);
 
       const submit = () => {
         if (!canSubmit) return;
@@ -2230,7 +2844,7 @@
       );
     }
 
-    function EmptyState({ icon, title, body, cta, onCta }) {
+    function EmptyState({ icon, title, body, cta, onCta, ctaIcon }) {
       return (
         <div className="card dashed anim-rise" style={{ padding: '40px 28px', textAlign: 'center', boxShadow: 'none' }}>
           {icon && (
@@ -2246,7 +2860,7 @@
           <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.65, margin: '0 auto', maxWidth: 320 }}>{body}</p>
           {cta && onCta && (
             <button onClick={onCta} className="btn btn-primary" style={{ marginTop: 20 }}>
-              <IconPlus size={14} /> {cta}
+              {ctaIcon || <IconPlus size={14} />} {cta}
             </button>
           )}
         </div>
