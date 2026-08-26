@@ -38,6 +38,13 @@ data. The app shows an empty card for every problem until you fill one in.
 Discover feature — it creates `skipped_suggestions` and its RLS policies. Without it the
 Skip button on a suggestion will fail; the rest of the app is unaffected.
 
+**After running any migration, reload PostgREST's schema cache.** Supabase's API layer
+(PostgREST) keeps its own schema cache; a fresh table or column returns
+`Could not find the … in the schema cache` until it reloads. The app auto-retries once
+after a short delay, which clears it in almost every case, but if you keep seeing the
+message: Supabase Dashboard → **Database** → **API** → **Reload schema**. Or run
+`notify pgrst, 'reload schema';` in the SQL Editor. Either fires the reload immediately.
+
 ## 3. Put your Supabase creds into `index.html`
 
 - Supabase → sidebar → **Project Settings** (gear icon at bottom) → **API**

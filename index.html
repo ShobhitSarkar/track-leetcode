@@ -1014,6 +1014,66 @@
 
     const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
+    // ============================================================
+    // Supabase call helper — retries once on a PostgREST schema-cache miss.
+    //
+    // After a migration (adding a table or column), PostgREST returns errors like
+    //   "Could not find the table 'public.foo' in the schema cache"
+    // until its internal schema cache reloads. The cache reloads on its own within a
+    // few minutes, or immediately when someone clicks Reload schema in the Supabase
+    // dashboard. In the transition window some calls fail and some succeed, which
+    // matches "intermittent cache errors" exactly.
+    //
+    // One retry with a small delay clears it in almost every real-world case; if the
+    // retry also fails, humaniseSbError rewrites the message so the user knows the
+    // specific fix instead of pasting the raw PostgREST text into a bug report.
+    // ============================================================
+    const SCHEMA_CACHE_RE = /schema cache/i;
+    // "Failed to fetch" (Chrome/Firefox), "Load failed" (Safari), "Network request
+    // failed" (older browsers) — the whole family of network-drop TypeErrors that
+    // browsers throw synchronously out of fetch(). Supabase-js doesn't catch them,
+    // so without runSb they'd propagate as uncaught promise rejections.
+    const NETWORK_ERR_RE = /failed to fetch|network|load failed|networkerror/i;
+    const isSchemaCacheError = (err) => !!err && SCHEMA_CACHE_RE.test(err.message || '');
+    const isNetworkError = (err) => !!err && (err.name === 'TypeError' || NETWORK_ERR_RE.test(err.message || ''));
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Every Supabase call goes through this. It never throws — a thrown error
+    // (network drop, aborted fetch, undefined return) is caught and reshaped into
+    // the standard `{ data, error }` result so callers can always destructure.
+    // Retries once with a small delay for two transient classes: PostgREST schema
+    // cache misses right after a migration, and network TypeErrors that clear
+    // once the connection recovers.
+    const runSb = async (fn) => {
+      const attempt = async () => {
+        try {
+          const r = await fn();
+          if (!r || typeof r !== 'object') {
+            return { data: null, error: { message: 'Empty response from Supabase' } };
+          }
+          return r;
+        } catch (err) {
+          return { data: null, error: err || { message: 'Unknown error' } };
+        }
+      };
+      let result = await attempt();
+      const transient = isSchemaCacheError(result.error) || isNetworkError(result.error);
+      if (transient) {
+        await sleep(900);
+        result = await attempt();
+      }
+      return result;
+    };
+    const humaniseSbError = (err) => {
+      if (isSchemaCacheError(err)) {
+        return "Supabase's schema cache is stale — open the Supabase dashboard → Database → API and click Reload schema, then try again.";
+      }
+      if (isNetworkError(err)) {
+        return "Network error — the request couldn't reach Supabase. Check your connection and try again.";
+      }
+      return err.message || String(err);
+    };
+
     function showFatal(msg) {
       document.getElementById('root').innerHTML = `
         <div style="padding: 24px; max-width: 460px; margin: 15vh auto; font-family: var(--font-sans);">
@@ -1819,8 +1879,9 @@
 
       const fetchProblems = async () => {
         setLoading(true); setError(null);
-        const { data, error } = await sb.from('problems').select('*').order('next_review', { ascending: true });
-        if (error) setError(error.message);
+        const { data, error } = await runSb(() =>
+          sb.from('problems').select('*').order('next_review', { ascending: true }));
+        if (error) setError(humaniseSbError(error));
         else setProblems(data || []);
         setLoading(false);
       };
@@ -1829,10 +1890,15 @@
       // because a skip is a *preference*, not a solve — merging the two would confuse
       // both the review queue and the mastery signal the recommender reads.
       // A pre-migration failure (no table yet) is swallowed silently so the app keeps
-      // running for users who haven't re-run the schema.
+      // running for users who haven't re-run the schema — but schema-cache errors are
+      // logged so a debugger can see why skips look empty during the reload window.
       const fetchSkips = async () => {
-        const { data, error } = await sb.from('skipped_suggestions').select('slug, skipped_at');
-        if (error) return;
+        const { data, error } = await runSb(() =>
+          sb.from('skipped_suggestions').select('slug, skipped_at'));
+        if (error) {
+          if (isSchemaCacheError(error)) console.warn('[skips] schema cache stale; retry later', error);
+          return;
+        }
         const map = new Map();
         for (const row of (data || [])) map.set(row.slug, row.skipped_at);
         setSkips(map);
@@ -1844,16 +1910,17 @@
         const prev = skips;
         const next = new Map(prev); next.set(slug, now);
         setSkips(next);
-        const { error } = await sb.from('skipped_suggestions')
-          .upsert({ user_id: user.id, slug, skipped_at: now }, { onConflict: 'user_id,slug' });
-        if (error) { setSkips(prev); notify('Failed to skip: ' + error.message, 'error'); }
+        const { error } = await runSb(() => sb.from('skipped_suggestions')
+          .upsert({ user_id: user.id, slug, skipped_at: now }, { onConflict: 'user_id,slug' }));
+        if (error) { setSkips(prev); notify('Failed to skip: ' + humaniseSbError(error), 'error'); }
       };
 
       const resetSkips = async () => {
         const prev = skips;
         setSkips(new Map());
-        const { error } = await sb.from('skipped_suggestions').delete().eq('user_id', user.id);
-        if (error) { setSkips(prev); notify('Failed to reset: ' + error.message, 'error'); }
+        const { error } = await runSb(() =>
+          sb.from('skipped_suggestions').delete().eq('user_id', user.id));
+        if (error) { setSkips(prev); notify('Failed to reset: ' + humaniseSbError(error), 'error'); }
         else notify(`Restored ${prev.size} skipped ${prev.size === 1 ? 'suggestion' : 'suggestions'}`, 'success');
       };
 
@@ -1874,8 +1941,8 @@
         const prev = problems;
         setProblems([...problems, newProblem]);
         setView('today');
-        const { error } = await sb.from('problems').insert(newProblem);
-        if (error) { setProblems(prev); notify('Failed to save: ' + error.message, 'error'); }
+        const { error } = await runSb(() => sb.from('problems').insert(newProblem));
+        if (error) { setProblems(prev); notify('Failed to save: ' + humaniseSbError(error), 'error'); }
         else notify(`${newProblem.name} added · back in ${RATING_INTERVALS[data.rating]}d`, 'success');
       };
 
@@ -1888,10 +1955,10 @@
         setProblems(problems.map((p) =>
           p.id === id ? { ...p, history: newHistory, next_review: newNextReview } : p
         ));
-        const { error } = await sb.from('problems')
+        const { error } = await runSb(() => sb.from('problems')
           .update({ history: newHistory, next_review: newNextReview })
-          .eq('id', id);
-        if (error) { setProblems(prev); notify('Failed to save: ' + error.message, 'error'); }
+          .eq('id', id));
+        if (error) { setProblems(prev); notify('Failed to save: ' + humaniseSbError(error), 'error'); }
         else notify(`Next review in ${RATING_INTERVALS[rating]} days`, 'success');
       };
 
@@ -1909,8 +1976,8 @@
         }
         const prev = problems;
         setProblems(problems.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-        const { error } = await sb.from('problems').update(patch).eq('id', id);
-        if (error) { setProblems(prev); notify('Failed to save: ' + error.message, 'error'); }
+        const { error } = await runSb(() => sb.from('problems').update(patch).eq('id', id));
+        if (error) { setProblems(prev); notify('Failed to save: ' + humaniseSbError(error), 'error'); }
         else notify('Card saved', 'success');
       };
 
@@ -1918,8 +1985,8 @@
         const gone = problems.find((p) => p.id === id);
         const prev = problems;
         setProblems(problems.filter((p) => p.id !== id));
-        const { error } = await sb.from('problems').delete().eq('id', id);
-        if (error) { setProblems(prev); notify('Failed to delete: ' + error.message, 'error'); }
+        const { error } = await runSb(() => sb.from('problems').delete().eq('id', id));
+        if (error) { setProblems(prev); notify('Failed to delete: ' + humaniseSbError(error), 'error'); }
         else notify(`${gone ? gone.name : 'Problem'} removed`, 'success');
       };
 
