@@ -1029,18 +1029,47 @@
     // specific fix instead of pasting the raw PostgREST text into a bug report.
     // ============================================================
     const SCHEMA_CACHE_RE = /schema cache/i;
+    // "Failed to fetch" (Chrome/Firefox), "Load failed" (Safari), "Network request
+    // failed" (older browsers) — the whole family of network-drop TypeErrors that
+    // browsers throw synchronously out of fetch(). Supabase-js doesn't catch them,
+    // so without runSb they'd propagate as uncaught promise rejections.
+    const NETWORK_ERR_RE = /failed to fetch|network|load failed|networkerror/i;
     const isSchemaCacheError = (err) => !!err && SCHEMA_CACHE_RE.test(err.message || '');
+    const isNetworkError = (err) => !!err && (err.name === 'TypeError' || NETWORK_ERR_RE.test(err.message || ''));
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Every Supabase call goes through this. It never throws — a thrown error
+    // (network drop, aborted fetch, undefined return) is caught and reshaped into
+    // the standard `{ data, error }` result so callers can always destructure.
+    // Retries once with a small delay for two transient classes: PostgREST schema
+    // cache misses right after a migration, and network TypeErrors that clear
+    // once the connection recovers.
     const runSb = async (fn) => {
-      let result = await fn();
-      if (isSchemaCacheError(result.error)) {
-        await new Promise((r) => setTimeout(r, 900));
-        result = await fn();
+      const attempt = async () => {
+        try {
+          const r = await fn();
+          if (!r || typeof r !== 'object') {
+            return { data: null, error: { message: 'Empty response from Supabase' } };
+          }
+          return r;
+        } catch (err) {
+          return { data: null, error: err || { message: 'Unknown error' } };
+        }
+      };
+      let result = await attempt();
+      const transient = isSchemaCacheError(result.error) || isNetworkError(result.error);
+      if (transient) {
+        await sleep(900);
+        result = await attempt();
       }
       return result;
     };
     const humaniseSbError = (err) => {
       if (isSchemaCacheError(err)) {
         return "Supabase's schema cache is stale — open the Supabase dashboard → Database → API and click Reload schema, then try again.";
+      }
+      if (isNetworkError(err)) {
+        return "Network error — the request couldn't reach Supabase. Check your connection and try again.";
       }
       return err.message || String(err);
     };
