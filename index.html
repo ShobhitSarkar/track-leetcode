@@ -1779,6 +1779,7 @@
     function MainApp({ user, theme, onToggleTheme }) {
       const isWide = useMediaQuery(WIDE);
       const [problems, setProblems] = useState([]);
+      const [skippedSlugs, setSkippedSlugs] = useState(() => new Set());
       const [view, setView] = useState('today');
       const [addPrefill, setAddPrefill] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -1788,7 +1789,7 @@
       const menuRef = useRef(null);
       const { toasts, notify, dismiss } = useToasts();
 
-      useEffect(() => { fetchProblems(); }, []);
+      useEffect(() => { fetchProblems(); fetchSkips(); }, []);
 
       useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 4);
@@ -1819,6 +1820,35 @@
         if (error) setError(error.message);
         else setProblems(data || []);
         setLoading(false);
+      };
+
+      // Skipped Discover suggestions. Kept in a separate table (not the problems row)
+      // because a skip is a *preference*, not a solve — merging the two would confuse
+      // both the review queue and the mastery signal the recommender reads.
+      // A pre-migration failure (no table yet) is swallowed silently so the app keeps
+      // running for users who haven't re-run the schema.
+      const fetchSkips = async () => {
+        const { data, error } = await sb.from('skipped_suggestions').select('slug');
+        if (error) return;
+        setSkippedSlugs(new Set((data || []).map((r) => r.slug)));
+      };
+
+      const skipSuggestion = async (name) => {
+        const slug = slugify(name);
+        const prev = skippedSlugs;
+        const next = new Set(prev); next.add(slug);
+        setSkippedSlugs(next);
+        const { error } = await sb.from('skipped_suggestions')
+          .upsert({ user_id: user.id, slug }, { onConflict: 'user_id,slug' });
+        if (error) { setSkippedSlugs(prev); notify('Failed to skip: ' + error.message, 'error'); }
+      };
+
+      const resetSkips = async () => {
+        const prev = skippedSlugs;
+        setSkippedSlugs(new Set());
+        const { error } = await sb.from('skipped_suggestions').delete().eq('user_id', user.id);
+        if (error) { setSkippedSlugs(prev); notify('Failed to reset: ' + error.message, 'error'); }
+        else notify(`Restored ${prev.size} skipped ${prev.size === 1 ? 'suggestion' : 'suggestions'}`, 'success');
       };
 
       const addProblem = async (data) => {
@@ -1938,7 +1968,8 @@
               onGoDiscover={() => goTo('discover')} />
           )}
           {view === 'discover' && (
-            <DiscoverView problems={problems} onLog={startLogging} />
+            <DiscoverView problems={problems} skippedSlugs={skippedSlugs}
+              onLog={startLogging} onSkip={skipSuggestion} onResetSkips={resetSkips} />
           )}
           {view === 'add' && (
             <AddView onAdd={addProblem} prefill={addPrefill} onConsumePrefill={() => setAddPrefill(null)} />
@@ -2410,10 +2441,13 @@
     // The main recommender. Returns an ordered list of sections, each with a title,
     // subtitle and a small (2-3) list of picks. Every pick carries a `reason` string
     // built from the actual signal that surfaced it.
-    function personalisedPicks(catalog, userProblems) {
+    function personalisedPicks(catalog, userProblems, skippedSlugs = new Set()) {
       const { solvedSlugs, patternStats, difficultyCleared } = analyseHistory(catalog, userProblems);
       const eligible = catalog
-        .filter((c) => !solvedSlugs.has(slugify(c.name)))
+        .filter((c) => {
+          const slug = slugify(c.name);
+          return !solvedSlugs.has(slug) && !skippedSlugs.has(slug);
+        })
         .map((c) => ({ ...c, frequency: frequencyOf(c.name) }));
 
       const sections = [];
@@ -2596,7 +2630,7 @@
       );
     }
 
-    function SuggestionCard({ prob, onLog, index }) {
+    function SuggestionCard({ prob, onLog, onSkip, index }) {
       const href = leetcodeUrlFor(prob.name);
       return (
         <div className="card anim-rise" style={{ padding: 16, animationDelay: `${Math.min(index, 8) * 30}ms` }}>
@@ -2629,23 +2663,43 @@
               {prob.reason}
             </div>
           )}
-          <button onClick={() => onLog(prob)} className="btn btn-quiet btn-sm">
-            <IconPlus size={13} /> Log as solved
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <button onClick={() => onLog(prob)} className="btn btn-quiet btn-sm">
+              <IconPlus size={13} /> Log as solved
+            </button>
+            {onSkip && (
+              <button onClick={() => onSkip(prob.name)} className="btn btn-ghost btn-sm"
+                aria-label={`Skip ${prob.name}`} title="Not this one — show me another">
+                <IconX size={12} /> Skip
+              </button>
+            )}
+          </div>
         </div>
       );
     }
 
-    function DiscoverView({ problems, onLog }) {
+    function DiscoverView({ problems, skippedSlugs, onLog, onSkip, onResetSkips }) {
       const sections = useMemo(
-        () => personalisedPicks(PROBLEM_CATALOG, problems),
-        [problems]
+        () => personalisedPicks(PROBLEM_CATALOG, problems, skippedSlugs),
+        [problems, skippedSlugs]
       );
+      const skippedCount = skippedSlugs ? skippedSlugs.size : 0;
 
       if (sections.length === 0) {
         return (
-          <EmptyState icon={<IconCompass size={22} />} title="No suggestions right now"
-            body="Either you've cleared the built-in catalog, or the engine can't find a clean next step. Log a few more solves and it'll pick things up." />
+          <div className="stack-3 anim-rise">
+            <EmptyState icon={<IconCompass size={22} />} title="No suggestions right now"
+              body={skippedCount > 0
+                ? "You've hidden everything the engine had. Reset the skip list to bring them back, or log a few more solves to open up new picks."
+                : "Either you've cleared the built-in catalog, or the engine can't find a clean next step. Log a few more solves and it'll pick things up."} />
+            {skippedCount > 0 && (
+              <div className="flex justify-center">
+                <button onClick={onResetSkips} className="btn btn-ghost btn-sm">
+                  Reset {skippedCount} skipped
+                </button>
+              </div>
+            )}
+          </div>
         );
       }
 
@@ -2661,11 +2715,25 @@
               </div>
               <div className="grid-review">
                 {section.picks.map((pick, i) => (
-                  <SuggestionCard key={pick.name} prob={pick} onLog={onLog} index={i} />
+                  <SuggestionCard key={pick.name} prob={pick} onLog={onLog} onSkip={onSkip} index={i} />
                 ))}
               </div>
             </section>
           ))}
+
+          {skippedCount > 0 && (
+            <div className="flex items-center justify-between gap-3" style={{
+              padding: '10px 14px', borderTop: '1px solid var(--border)',
+              color: 'var(--faint)', fontSize: 11.5,
+            }}>
+              <span>
+                {skippedCount} {skippedCount === 1 ? 'suggestion is' : 'suggestions are'} hidden.
+              </span>
+              <button onClick={onResetSkips} className="btn btn-ghost btn-sm">
+                Reset skipped
+              </button>
+            </div>
+          )}
         </div>
       );
     }

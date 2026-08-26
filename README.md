@@ -34,6 +34,10 @@ the `alter table ... add column if not exists` lines at the top add the flashcar
 (`url`, `solution`, `notes`, `solution_saved_at`) to your existing table without touching your
 data. The app shows an empty card for every problem until you fill one in.
 
+**Discover's skip list needs a second table.** Re-run `schema.sql` after pulling the
+Discover feature — it creates `skipped_suggestions` and its RLS policies. Without it the
+Skip button on a suggestion will fail; the rest of the app is unaffected.
+
 ## 3. Put your Supabase creds into `index.html`
 
 - Supabase → sidebar → **Project Settings** (gear icon at bottom) → **API**
