@@ -2186,11 +2186,16 @@
           updated_at: now,
           created_at: now,
         };
-        const prev = notes;
-        setNotes([newNote, ...notes]);
+        // Functional setState so a rapid second call sees the first call's
+        // update rather than the stale closure.
+        setNotes((prev) => [newNote, ...prev]);
         setSelectedNoteId(newNote.id);
         const { error } = await runSb(() => sb.from('notes').insert(newNote));
-        if (error) { setNotes(prev); notify('Failed to save note: ' + humaniseSbError(error), 'error'); return null; }
+        if (error) {
+          setNotes((prev) => prev.filter((n) => n.id !== newNote.id));
+          notify('Failed to save note: ' + humaniseSbError(error), 'error');
+          return null;
+        }
         return newNote;
       };
 
@@ -2201,30 +2206,46 @@
           body: patch.body ?? '',
           updated_at: new Date().toISOString(),
         };
-        const prev = notes;
-        setNotes(notes.map((n) => (n.id === id ? { ...n, ...clean } : n)));
+        let restored;
+        setNotes((prev) => {
+          restored = prev.find((n) => n.id === id);
+          return prev.map((n) => (n.id === id ? { ...n, ...clean } : n));
+        });
         const { error } = await runSb(() => sb.from('notes').update(clean).eq('id', id));
-        if (error) { setNotes(prev); notify('Failed to save note: ' + humaniseSbError(error), 'error'); }
+        if (error) {
+          if (restored) setNotes((prev) => prev.map((n) => (n.id === id ? restored : n)));
+          notify('Failed to save note: ' + humaniseSbError(error), 'error');
+        }
       };
 
       const deleteNote = async (id) => {
-        const gone = notes.find((n) => n.id === id);
-        const prevN = notes; const prevC = cards;
-        setNotes(notes.filter((n) => n.id !== id));
-        setCards(cards.filter((c) => c.note_id !== id));
+        let goneNote, goneCards;
+        setNotes((prev) => { goneNote = prev.find((n) => n.id === id); return prev.filter((n) => n.id !== id); });
+        setCards((prev) => { goneCards = prev.filter((c) => c.note_id === id); return prev.filter((c) => c.note_id !== id); });
         if (selectedNoteId === id) setSelectedNoteId(null);
         // The FK is `on delete cascade` so removing the note removes its cards server-side.
         const { error } = await runSb(() => sb.from('notes').delete().eq('id', id));
-        if (error) { setNotes(prevN); setCards(prevC); notify('Failed to delete: ' + humaniseSbError(error), 'error'); }
-        else notify(`${gone ? gone.title : 'Note'} removed`, 'success');
+        if (error) {
+          if (goneNote) setNotes((prev) => [goneNote, ...prev]);
+          if (goneCards && goneCards.length) setCards((prev) => [...prev, ...goneCards]);
+          notify('Failed to delete: ' + humaniseSbError(error), 'error');
+        } else {
+          notify(`${goneNote ? goneNote.title : 'Note'} removed`, 'success');
+        }
       };
 
       const insertCards = async (rows) => {
         if (rows.length === 0) return;
-        const prev = cards;
-        setCards([...cards, ...rows]);
+        // Functional setState because the AI path awaits up to 30s before the
+        // DB write returns; a stale `prev` snapshot would clobber ratings,
+        // deletes, or newly inserted cards that landed in between.
+        setCards((prev) => [...prev, ...rows]);
+        const rowIds = new Set(rows.map((r) => r.id));
         const { error } = await runSb(() => sb.from('flashcards').insert(rows));
-        if (error) { setCards(prev); notify('Failed to save cards: ' + humaniseSbError(error), 'error'); }
+        if (error) {
+          setCards((prev) => prev.filter((c) => !rowIds.has(c.id)));
+          notify('Failed to save cards: ' + humaniseSbError(error), 'error');
+        }
       };
 
       // Client-side card extraction from a note body. Naive but honest:
@@ -2392,20 +2413,26 @@
         if (!card) return;
         const newHistory = [...(card.history || []), { date: todayStr(), rating }];
         const newNextReview = addDays(todayStr(), RATING_INTERVALS[rating]);
-        const prev = cards;
-        setCards(cards.map((c) =>
+        const rollback = { history: card.history, next_review: card.next_review };
+        setCards((prev) => prev.map((c) =>
           c.id === id ? { ...c, history: newHistory, next_review: newNextReview } : c
         ));
         const { error } = await runSb(() => sb.from('flashcards')
           .update({ history: newHistory, next_review: newNextReview }).eq('id', id));
-        if (error) { setCards(prev); notify('Failed to save: ' + humaniseSbError(error), 'error'); }
+        if (error) {
+          setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...rollback } : c)));
+          notify('Failed to save: ' + humaniseSbError(error), 'error');
+        }
       };
 
       const deleteCard = async (id) => {
-        const prev = cards;
-        setCards(cards.filter((c) => c.id !== id));
+        let gone;
+        setCards((prev) => { gone = prev.find((c) => c.id === id); return prev.filter((c) => c.id !== id); });
         const { error } = await runSb(() => sb.from('flashcards').delete().eq('id', id));
-        if (error) { setCards(prev); notify('Failed to delete: ' + humaniseSbError(error), 'error'); }
+        if (error) {
+          if (gone) setCards((prev) => [...prev, gone]);
+          notify('Failed to delete: ' + humaniseSbError(error), 'error');
+        }
       };
       // -----------------------------------------------------------------
 
@@ -3658,18 +3685,40 @@
 
       useEffect(() => { setTitle(note.title || ''); setTopic(note.topic || ''); setBody(note.body || ''); }, [note.id]);
 
+      // Refs so the unmount cleanup can flush the latest pending edit without
+      // relying on the closure of the mount effect (which sees only the first
+      // render's values). NotesView keys this component on selected.id, so an
+      // unmount here is either a note switch or leaving the tab — both need
+      // any pending debounce to commit before it goes.
+      const draftRef = useRef({ title, topic, body });
+      const dirtyRef = useRef(false);
+      const saveRef = useRef(onSave);
+      useEffect(() => { saveRef.current = onSave; }, [onSave]);
+      useEffect(() => { draftRef.current = { title, topic, body }; }, [title, topic, body]);
+
       // Debounce persistence. If any of the three fields changes, wait for quiet
       // and then commit. The saved-state indicator drives the "editing / saved"
       // dot in the editor footer.
       useEffect(() => {
-        if (title === (note.title || '') && topic === (note.topic || '') && body === (note.body || '')) return;
+        if (title === (note.title || '') && topic === (note.topic || '') && body === (note.body || '')) {
+          dirtyRef.current = false;
+          return;
+        }
+        dirtyRef.current = true;
         setSavedState('editing');
         const h = setTimeout(() => {
           onSave({ title, topic, body });
+          dirtyRef.current = false;
           setSavedState('saved');
         }, 600);
         return () => clearTimeout(h);
       }, [title, topic, body]);
+
+      // Flush any pending debounce on real unmount so a fast note-switch (or
+      // leaving the Notes tab) never drops the last <600ms of typing.
+      useEffect(() => () => {
+        if (dirtyRef.current) saveRef.current(draftRef.current);
+      }, []);
 
       const dueCards = cards.filter((c) => c.next_review <= today);
 
@@ -3851,12 +3900,32 @@
     }
 
     function NoteQuizPanel({ cards, dueCards, onRate }) {
+      const [reviewAll, setReviewAll] = useState(false);
+      // Snapshot the queue at session start so a rating (which pushes the card's
+      // next_review out and drops it from `dueCards`) doesn't cause `idx` to
+      // skip the very next card. `cards` is still the source of truth for the
+      // rendered content — we look each id back up so a mid-session edit or
+      // delete is reflected.
+      const [queueIds, setQueueIds] = useState(() => dueCards.map((c) => c.id));
       const [idx, setIdx] = useState(0);
       const [revealed, setRevealed] = useState(false);
-      const [reviewAll, setReviewAll] = useState(false);
-      const queue = reviewAll ? cards : dueCards;
 
-      useEffect(() => { setIdx(0); setRevealed(false); }, [reviewAll]);
+      useEffect(() => {
+        const source = reviewAll ? cards : dueCards;
+        setQueueIds(source.map((c) => c.id));
+        setIdx(0);
+        setRevealed(false);
+      }, [reviewAll]);
+
+      // A card in the queue can vanish (user deleted it in the Cards tab).
+      // Skip forward instead of rendering nothing.
+      const card = idx < queueIds.length ? cards.find((c) => c.id === queueIds[idx]) : null;
+      useEffect(() => {
+        if (idx < queueIds.length && !card) {
+          setIdx((i) => i + 1);
+          setRevealed(false);
+        }
+      }, [card, idx, queueIds.length]);
 
       if (cards.length === 0) {
         return (
@@ -3868,7 +3937,7 @@
         );
       }
 
-      if (queue.length === 0 || idx >= queue.length) {
+      if (queueIds.length === 0 || idx >= queueIds.length) {
         return (
           <div className="card anim-fade" style={{ padding: 32, textAlign: 'center' }}>
             <div className="display" style={{ fontSize: 28, lineHeight: 1.2, marginBottom: 8 }}>Queue clear</div>
@@ -3884,19 +3953,20 @@
         );
       }
 
-      const card = queue[idx];
-      const pct = Math.round((idx / queue.length) * 100);
+      if (!card) return null; // brief render between the deletion skip and the next tick
+
+      const pct = Math.round((idx / queueIds.length) * 100);
 
       const handleRate = (r) => {
         onRate(card.id, r);
         setRevealed(false);
-        setIdx(idx + 1);
+        setIdx((i) => i + 1);
       };
 
       return (
         <div className="quiz-stage anim-fade">
           <div className="quiz-progress">
-            <span className="mono">Card {idx + 1} of {queue.length}</span>
+            <span className="mono">Card {idx + 1} of {queueIds.length}</span>
             <div className="progress-track"><div className="progress-fill" style={{ width: pct + '%' }} /></div>
             <span className="mono">{pct}%</span>
           </div>

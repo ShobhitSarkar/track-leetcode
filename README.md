@@ -177,7 +177,8 @@ on the same 30 / 12 / 5 / 2 spaced-repetition rhythm as your problems.
   you to recall the whole passage.
 - The **Cards** sub-tab lists every card for the note, generated or manually authored.
   Add one by hand (front + back), regenerate from the note body, or delete individually.
-  Each card carries a `source` badge (`generated` / `manual`) and its next review date.
+  Each card carries a `source` badge (`ai` / `heuristic` / `manual`) and its next
+  review date. See **Card generation** below for what those sources mean.
 - The **Quiz** sub-tab walks through the note's due cards one at a time. Face-down
   reveal, then a 1–4 rating that stamps the next interval, exactly like problem review.
 - Every note has an optional **topic** (pill on the left of the header — e.g. "Sliding
