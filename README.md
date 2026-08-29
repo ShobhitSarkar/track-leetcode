@@ -38,6 +38,11 @@ data. The app shows an empty card for every problem until you fill one in.
 Discover feature — it creates `skipped_suggestions` and its RLS policies. Without it the
 Skip button on a suggestion will fail; the rest of the app is unaffected.
 
+**Notes + flashcards need two more tables.** Re-run `schema.sql` after pulling the
+Notes feature — it adds `notes` and `flashcards` (with RLS and indexes). Without them
+the Notes tab loads empty and any card action fails silently; the existing four tabs
+keep working. See the **Notes** section below for the full flow.
+
 **After running any migration, reload PostgREST's schema cache.** Supabase's API layer
 (PostgREST) keeps its own schema cache; a fresh table or column returns
 `Could not find the … in the schema cache` until it reloads. The app auto-retries once
@@ -159,7 +164,37 @@ present. Review cards cap at two columns on purpose: they hold code and a rating
 a third column costs more in readability than it gains. Change the breakpoints on
 `.grid-review`, `.grid-rows` and `.grid-add` to taste.
 
-## Flashcards
+## Notes
+
+The Notes tab is a freeform notebook — any topic, not just a LeetCode problem. Write a
+short note about a pattern, a system-design tradeoff, a language quirk, a behavioral
+story. Then hit **Generate cards** to turn every paragraph into a flashcard that lives
+on the same 30 / 12 / 5 / 2 spaced-repetition rhythm as your problems.
+
+- The **Write** sub-tab holds the note body. Every paragraph (blank line between them)
+  becomes one card when you generate. A colon or first sentence splits into
+  front (the prompt) and back (the elaboration); if neither is present the card asks
+  you to recall the whole passage.
+- The **Cards** sub-tab lists every card for the note, generated or manually authored.
+  Add one by hand (front + back), regenerate from the note body, or delete individually.
+  Each card carries a `source` badge (`generated` / `manual`) and its next review date.
+- The **Quiz** sub-tab walks through the note's due cards one at a time. Face-down
+  reveal, then a 1–4 rating that stamps the next interval, exactly like problem review.
+- Every note has an optional **topic** (pill on the left of the header — e.g. "Sliding
+  Window", "System Design", "Behavioral"). If a note was spawned from the Add view
+  it also carries a **linked-problem** badge and can jump straight to that problem's
+  card in the library.
+
+The **Add** view has a new **Start a note for this** checkbox. Ticking it saves the
+problem AND spawns a note pre-linked to it (title = problem name, topic = pattern,
+body = the notes field). The app then drops you straight into the Notes tab with that
+note selected, ready to jot the insight and generate cards from it.
+
+The rail's due-count on **Today** now also flags flashcards: if any cards are due,
+a small "N flashcards due" pill sits below the problem count and jumps to Notes so
+one morning session covers both queues.
+
+## Flashcards on problems
 
 Each problem can hold the solution you actually wrote, your notes, and a link to the
 problem itself. When it comes up for review, the card stays face down behind a
