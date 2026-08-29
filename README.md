@@ -38,6 +38,11 @@ data. The app shows an empty card for every problem until you fill one in.
 Discover feature — it creates `skipped_suggestions` and its RLS policies. Without it the
 Skip button on a suggestion will fail; the rest of the app is unaffected.
 
+**Notes + flashcards need two more tables.** Re-run `schema.sql` after pulling the
+Notes feature — it adds `notes` and `flashcards` (with RLS and indexes). Without them
+the Notes tab loads empty and any card action fails silently; the existing four tabs
+keep working. See the **Notes** section below for the full flow.
+
 **After running any migration, reload PostgREST's schema cache.** Supabase's API layer
 (PostgREST) keeps its own schema cache; a fresh table or column returns
 `Could not find the … in the schema cache` until it reloads. The app auto-retries once
@@ -159,7 +164,92 @@ present. Review cards cap at two columns on purpose: they hold code and a rating
 a third column costs more in readability than it gains. Change the breakpoints on
 `.grid-review`, `.grid-rows` and `.grid-add` to taste.
 
-## Flashcards
+## Notes
+
+The Notes tab is a freeform notebook — any topic, not just a LeetCode problem. Write a
+short note about a pattern, a system-design tradeoff, a language quirk, a behavioral
+story. Then hit **Generate cards** to turn every paragraph into a flashcard that lives
+on the same 30 / 12 / 5 / 2 spaced-repetition rhythm as your problems.
+
+- The **Write** sub-tab holds the note body. Every paragraph (blank line between them)
+  becomes one card when you generate. A colon or first sentence splits into
+  front (the prompt) and back (the elaboration); if neither is present the card asks
+  you to recall the whole passage.
+- The **Cards** sub-tab lists every card for the note, generated or manually authored.
+  Add one by hand (front + back), regenerate from the note body, or delete individually.
+  Each card carries a `source` badge (`ai` / `heuristic` / `manual`) and its next
+  review date. See **Card generation** below for what those sources mean.
+- The **Quiz** sub-tab walks through the note's due cards one at a time. Face-down
+  reveal, then a 1–4 rating that stamps the next interval, exactly like problem review.
+- Every note has an optional **topic** (pill on the left of the header — e.g. "Sliding
+  Window", "System Design", "Behavioral"). If a note was spawned from the Add view
+  it also carries a **linked-problem** badge and can jump straight to that problem's
+  card in the library.
+
+The **Add** view has a new **Start a note for this** checkbox. Ticking it saves the
+problem AND spawns a note pre-linked to it (title = problem name, topic = pattern,
+body = the notes field). The app then drops you straight into the Notes tab with that
+note selected, ready to jot the insight and generate cards from it.
+
+### Card generation
+
+Two paths, decided at request time:
+
+1. **OpenAI (primary)** — the client posts the note to a Supabase Edge Function
+   (`supabase/functions/generate-cards`), which forwards it to OpenAI and returns
+   JSON flashcards. Each card is tagged `source: 'ai'`. See the deploy steps
+   below.
+2. **Heuristic (fallback)** — client-side, no network. Splits the note body on
+   blank lines and each paragraph on the first colon or sentence to build a
+   front / back pair. Cards are tagged `source: 'heuristic'`. This is what runs
+   before you deploy the Edge Function, or any time the OpenAI request fails.
+
+The toast that fires after generation names the path so you know which one ran
+("Generated 4 cards via AI · next up in 5 days" vs "… via heuristic …"). Cards
+already in the note aren't touched — Regenerate always **adds** cards, never
+replaces them, so you can accumulate and prune by hand.
+
+### Deploying the OpenAI Edge Function
+
+The function is defined in `supabase/functions/generate-cards/`. Install the
+Supabase CLI, log in, link your project, then:
+
+```bash
+# One-time setup
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Store your OpenAI key as a Function secret (never commit it)
+supabase secrets set OPENAI_API_KEY=sk-...
+
+# Optional: choose a model. Defaults to gpt-4o-mini.
+supabase secrets set OPENAI_MODEL=gpt-4o-mini
+
+# Deploy
+supabase functions deploy generate-cards
+```
+
+That's it. The Supabase gateway verifies the caller's JWT before the handler
+runs, so anonymous requests never reach OpenAI. The client sends the note body
+and the current session's access token; the function returns
+`{ cards: [{ front, back, code }] }` on success or an error envelope on
+failure. Any non-2xx response makes the client fall back to the heuristic,
+silently, so a broken key never breaks card generation entirely.
+
+To iterate locally without redeploying:
+
+```bash
+supabase functions serve generate-cards --env-file supabase/functions/.env.local
+```
+
+Rough per-card cost with `gpt-4o-mini`: a typical note produces 3–8 cards for
+well under a cent. Bigger models are trivial to swap via `OPENAI_MODEL`.
+
+The rail's due-count on **Today** now also flags flashcards: if any cards are due,
+a small "N flashcards due" pill sits below the problem count and jumps to Notes so
+one morning session covers both queues.
+
+## Flashcards on problems
 
 Each problem can hold the solution you actually wrote, your notes, and a link to the
 problem itself. When it comes up for review, the card stays face down behind a

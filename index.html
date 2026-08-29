@@ -996,6 +996,216 @@
        it stops stretching once the form has actually split in two. */
     .add-submit { grid-column: 1 / -1; }
     @container (min-width: 860px) { .add-submit { justify-self: start; width: auto; min-width: 230px; } }
+
+    /* ==========================================================================
+       Notes — freeform notetaking + generated flashcards
+       ========================================================================== */
+    .notes-shell {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @container (max-width: 780px) {
+      .notes-shell { grid-template-columns: 1fr; }
+    }
+
+    .notes-rail {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 12px 10px;
+      position: sticky;
+      top: 96px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+    .notes-rail-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 6px 10px;
+      gap: 8px;
+    }
+    .notes-list { display: flex; flex-direction: column; gap: 2px; }
+    .notes-item {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 10px 10px;
+      background: transparent;
+      border: none;
+      border-radius: var(--r-md);
+      cursor: pointer;
+      text-align: left;
+      transition: background 130ms var(--ease-out);
+      position: relative;
+    }
+    .notes-item:hover { background: var(--hover); }
+    .notes-item[data-active="true"] {
+      background: var(--surface-2);
+      box-shadow: inset 0 0 0 1px var(--border);
+    }
+    .notes-item[data-active="true"]::before {
+      content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px;
+      background: var(--primary); border-radius: 999px;
+    }
+    .notes-item-title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .notes-item-meta {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+    }
+
+    .note-workspace {
+      display: flex; flex-direction: column; gap: 16px;
+      min-width: 0;
+    }
+    .note-head { display: flex; flex-direction: column; gap: 8px; }
+    .note-title-input {
+      background: transparent; border: none; outline: none;
+      font-family: var(--font-display); font-size: 34px; line-height: 1.15;
+      letter-spacing: -0.015em; color: var(--text); width: 100%;
+      padding: 4px 0;
+    }
+    .note-title-input::placeholder { color: var(--faint); }
+    .note-sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .note-topic-input {
+      background: var(--inset); border: 1px solid transparent;
+      border-radius: 999px; padding: 4px 10px;
+      font-size: 11px; color: var(--accent); outline: none; min-width: 220px;
+      transition: border-color 130ms;
+    }
+    .note-topic-input:focus { border-color: var(--accent); background: var(--surface-2); }
+    .note-topic-input::placeholder { color: var(--faint); }
+
+    .note-tabs {
+      display: flex; align-items: center; gap: 4px;
+      background: var(--tabs-bg); padding: 4px;
+      border-radius: var(--r-md);
+    }
+    .note-tab {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 8px;
+      font-size: 12.5px; font-weight: 500; color: var(--muted);
+      background: transparent; border: none; cursor: pointer;
+      transition: color 130ms, background 130ms;
+    }
+    .note-tab:hover { color: var(--text); }
+    .note-tab[data-active="true"] {
+      background: var(--surface-2); color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+    .note-tab-count {
+      font-family: var(--font-mono); font-size: 10px;
+      background: var(--inset); color: var(--muted);
+      padding: 1px 6px; border-radius: 999px; min-width: 18px; text-align: center;
+    }
+    .note-tab-count[data-hot="true"] { background: var(--accent-soft); color: var(--accent); }
+
+    .note-body-editor {
+      width: 100%; min-height: 320px; resize: vertical;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 20px 22px;
+      font-family: var(--font-sans); font-size: 14.5px; line-height: 1.65;
+      color: var(--text); outline: none;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 130ms, box-shadow 130ms;
+    }
+    .note-body-editor:focus { border-color: var(--border-strong); }
+    .note-body-editor::placeholder { color: var(--faint); }
+
+    .generate-cta {
+      margin-top: 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border-radius: var(--r-lg);
+      padding: 20px 22px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
+    }
+
+    .cards-summary {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px; margin-bottom: 16px;
+    }
+    .stat-tile {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-md); padding: 12px 14px;
+    }
+    .stat-tile .k {
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .stat-tile .v {
+      font-family: var(--font-display); font-size: 28px; letter-spacing: -0.01em; margin-top: 2px;
+    }
+    .stat-tile.accent .v { color: var(--primary); }
+
+    .quiz-stage {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: 26px 28px;
+      box-shadow: var(--shadow-md);
+      display: flex; flex-direction: column; gap: 18px;
+      position: relative; overflow: hidden;
+    }
+    .quiz-stage::after {
+      content: ""; position: absolute; inset: 0;
+      background:
+        radial-gradient(1200px 400px at 20% -10%, var(--accent-soft), transparent 60%),
+        radial-gradient(800px 300px at 100% 110%, var(--primary-soft), transparent 60%);
+      pointer-events: none;
+    }
+    .quiz-stage > * { position: relative; z-index: 1; }
+    .quiz-progress {
+      display: flex; align-items: center; gap: 14px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    }
+    .progress-track {
+      flex: 1; height: 3px; background: var(--inset); border-radius: 999px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 999px; transition: width 320ms var(--ease-out);
+    }
+    .quiz-card {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 24px 26px;
+      display: flex; flex-direction: column; gap: 16px; min-height: 180px;
+    }
+    .quiz-question {
+      font-size: 26px; line-height: 1.25; letter-spacing: -0.015em; text-wrap: balance;
+    }
+    .quiz-answer { font-size: 14.5px; line-height: 1.7; color: var(--text); }
+
+    /* "Start a note" toggle inside the Add view */
+    .start-note-toggle {
+      grid-column: 1 / -1;
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      transition: border-color 130ms, background 130ms;
+    }
+    .start-note-toggle:hover { border-color: var(--border-strong); }
+    .start-note-toggle[data-checked="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .start-note-toggle input {
+      margin-top: 3px; accent-color: var(--accent);
+      width: 15px; height: 15px; flex: none;
+    }
+    .start-note-body { display: flex; flex-direction: column; gap: 3px; }
+    .start-note-title {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+    }
+    .start-note-sub {
+      font-size: 11.5px; line-height: 1.5; color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -1443,6 +1653,11 @@
     const IconAlert = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7.5v5M12 16.2v.1" /></Svg>;
     const IconX = (p) => <Svg {...p}><path d="M18 6 6 18M6 6l12 12" /></Svg>;
     const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.9 5.3L19 10l-5.1 1.7L12 17l-1.9-5.3L5 10l5.1-1.7L12 3zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" /></Svg>;
+    const IconNotes = (p) => (
+      <Svg {...p}><path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+        <path d="M14 3v5h5M8 12h8M8 16h5" /></Svg>
+    );
+    const IconBolt = (p) => <Svg {...p}><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z" /></Svg>;
     const IconCompass = (p) => (
       <Svg {...p}>
         <circle cx="12" cy="12" r="9.5" />
@@ -1453,6 +1668,7 @@
     const TABS = [
       { key: 'today', label: 'Today', Icon: IconInbox },
       { key: 'discover', label: 'Discover', Icon: IconCompass },
+      { key: 'notes', label: 'Notes', Icon: IconNotes },
       { key: 'add', label: 'Add', Icon: IconPlus },
       { key: 'all', label: 'All', Icon: IconLayers },
     ];
@@ -1471,6 +1687,12 @@
         sub: (s) => (s.total === 0
           ? 'Fresh problems, sorted so you build on what you know and try new patterns.'
           : 'Suggested from a curated set, filtered against what you\'ve already tracked.'),
+      },
+      notes: {
+        title: 'Notes',
+        sub: (s) => (s.notesTotal === 0
+          ? 'Freeform notes on anything worth remembering — a pattern, a tradeoff, a story. Generate flashcards from any note and they join your review queue.'
+          : `${s.notesTotal} ${s.notesTotal === 1 ? 'note' : 'notes'}${s.cardsDue > 0 ? ` · ${s.cardsDue} card${s.cardsDue === 1 ? '' : 's'} due` : ''}.`),
       },
       add: {
         title: 'Add a problem',
@@ -1843,6 +2065,9 @@
       // decide whether a skip is still relevant based on when it was made vs. when
       // the user last practiced one of that problem's patterns.
       const [skips, setSkips] = useState(() => new Map());
+      const [notes, setNotes] = useState([]);
+      const [cards, setCards] = useState([]);
+      const [selectedNoteId, setSelectedNoteId] = useState(null);
       const [view, setView] = useState('today');
       const [addPrefill, setAddPrefill] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -1852,7 +2077,7 @@
       const menuRef = useRef(null);
       const { toasts, notify, dismiss } = useToasts();
 
-      useEffect(() => { fetchProblems(); fetchSkips(); }, []);
+      useEffect(() => { fetchProblems(); fetchSkips(); fetchNotes(); fetchCards(); }, []);
 
       useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 4);
@@ -1924,6 +2149,293 @@
         else notify(`Restored ${prev.size} skipped ${prev.size === 1 ? 'suggestion' : 'suggestions'}`, 'success');
       };
 
+      // ---- Notes and flashcards ----------------------------------------
+      // Notes are freeform (any topic, not just a LeetCode problem). Cards are
+      // generated from a note's body and scheduled on the same 30/12/5/2 rhythm as
+      // problems. A pre-migration schema (no `notes` table yet) is swallowed silently
+      // so the rest of the app keeps working; the user re-runs schema.sql to enable it.
+      const fetchNotes = async () => {
+        const { data, error } = await runSb(() =>
+          sb.from('notes').select('*').order('updated_at', { ascending: false }));
+        if (error) {
+          if (isSchemaCacheError(error)) console.warn('[notes] schema cache stale; retry later', error);
+          return;
+        }
+        setNotes(data || []);
+      };
+
+      const fetchCards = async () => {
+        const { data, error } = await runSb(() =>
+          sb.from('flashcards').select('*').order('next_review', { ascending: true }));
+        if (error) {
+          if (isSchemaCacheError(error)) console.warn('[flashcards] schema cache stale; retry later', error);
+          return;
+        }
+        setCards(data || []);
+      };
+
+      const addNote = async ({ title, topic, body, problem_id }) => {
+        const now = new Date().toISOString();
+        const newNote = {
+          id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          user_id: user.id,
+          title: (title || 'Untitled').trim(),
+          topic: (topic || '').trim() || null,
+          body: (body || ''),
+          problem_id: problem_id || null,
+          updated_at: now,
+          created_at: now,
+        };
+        // Functional setState so a rapid second call sees the first call's
+        // update rather than the stale closure.
+        setNotes((prev) => [newNote, ...prev]);
+        setSelectedNoteId(newNote.id);
+        const { error } = await runSb(() => sb.from('notes').insert(newNote));
+        if (error) {
+          setNotes((prev) => prev.filter((n) => n.id !== newNote.id));
+          notify('Failed to save note: ' + humaniseSbError(error), 'error');
+          return null;
+        }
+        return newNote;
+      };
+
+      const saveNote = async (id, patch) => {
+        const clean = {
+          title: (patch.title ?? '').trim() || 'Untitled',
+          topic: (patch.topic ?? '').trim() || null,
+          body: patch.body ?? '',
+          updated_at: new Date().toISOString(),
+        };
+        let restored;
+        setNotes((prev) => {
+          restored = prev.find((n) => n.id === id);
+          return prev.map((n) => (n.id === id ? { ...n, ...clean } : n));
+        });
+        const { error } = await runSb(() => sb.from('notes').update(clean).eq('id', id));
+        if (error) {
+          if (restored) setNotes((prev) => prev.map((n) => (n.id === id ? restored : n)));
+          notify('Failed to save note: ' + humaniseSbError(error), 'error');
+        }
+      };
+
+      const deleteNote = async (id) => {
+        let goneNote, goneCards;
+        setNotes((prev) => { goneNote = prev.find((n) => n.id === id); return prev.filter((n) => n.id !== id); });
+        setCards((prev) => { goneCards = prev.filter((c) => c.note_id === id); return prev.filter((c) => c.note_id !== id); });
+        if (selectedNoteId === id) setSelectedNoteId(null);
+        // The FK is `on delete cascade` so removing the note removes its cards server-side.
+        const { error } = await runSb(() => sb.from('notes').delete().eq('id', id));
+        if (error) {
+          if (goneNote) setNotes((prev) => [goneNote, ...prev]);
+          if (goneCards && goneCards.length) setCards((prev) => [...prev, ...goneCards]);
+          notify('Failed to delete: ' + humaniseSbError(error), 'error');
+        } else {
+          notify(`${goneNote ? goneNote.title : 'Note'} removed`, 'success');
+        }
+      };
+
+      const insertCards = async (rows) => {
+        if (rows.length === 0) return;
+        // Functional setState because the AI path awaits up to 30s before the
+        // DB write returns; a stale `prev` snapshot would clobber ratings,
+        // deletes, or newly inserted cards that landed in between.
+        setCards((prev) => [...prev, ...rows]);
+        const rowIds = new Set(rows.map((r) => r.id));
+        const { error } = await runSb(() => sb.from('flashcards').insert(rows));
+        if (error) {
+          setCards((prev) => prev.filter((c) => !rowIds.has(c.id)));
+          notify('Failed to save cards: ' + humaniseSbError(error), 'error');
+        }
+      };
+
+      // Client-side card extraction from a note body. Naive but honest:
+      // split on blank lines, take the paragraphs of at least ~20 chars, and split
+      // each on the first colon or first sentence so the front is a natural prompt
+      // and the back is the elaboration. If neither pattern is present we still
+      // create a "recall this passage" card so nothing gets dropped silently.
+      const cardsFromBody = (noteId, body) => {
+        const now = todayStr();
+        const nextReview = addDays(now, RATING_INTERVALS[3]);
+        const paragraphs = (body || '')
+          .split(/\n\s*\n/)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 20);
+        return paragraphs.map((p) => {
+          const colon = p.indexOf(':');
+          const period = p.search(/[.!?]\s/);
+          let front, back;
+          const afterColon = colon >= 0 ? p.slice(colon + 1).trim() : '';
+          const afterPeriod = period >= 0 ? p.slice(period + 1).trim() : '';
+          if (colon > 3 && colon < 80 && afterColon.length > 0) {
+            front = p.slice(0, colon).trim() + '?';
+            back = afterColon;
+          } else if (period > 3 && period < 140 && afterPeriod.length > 0) {
+            front = p.slice(0, period + 1).trim();
+            back = afterPeriod;
+          } else {
+            front = 'Recall this passage:';
+            back = p;
+          }
+          return {
+            id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            user_id: user.id,
+            note_id: noteId,
+            front, back,
+            code: null,
+            source: 'heuristic',
+            history: [],
+            next_review: nextReview,
+            created_at: now,
+          };
+        });
+      };
+
+      // Ask the generate-cards Edge Function to produce flashcards with OpenAI.
+      // Returns an array of {front, back, code?} on success, or null on any
+      // failure so the caller can fall back to the client-side heuristic.
+      // We treat "not deployed / not configured" and "auth failed" as the same
+      // fallback path — the app should keep working with the heuristic even
+      // before the function is set up.
+      const requestAiCards = async (note) => {
+        // Guard against a hung upstream — the client walks away after 30s and
+        // the heuristic fires instead, so the Generate button never leaves the
+        // user staring at a spinner longer than that.
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 30000);
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          if (!session) return null;
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-cards`, {
+            method: 'POST',
+            signal: ctrl.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              title: note.title || '',
+              topic: note.topic || '',
+              body: note.body || '',
+            }),
+          });
+          if (!resp.ok) {
+            const body = await resp.text().catch(() => '');
+            console.warn('[generate-cards] failed', resp.status, body.slice(0, 200));
+            return null;
+          }
+          const data = await resp.json();
+          const arr = Array.isArray(data?.cards) ? data.cards : null;
+          if (!arr || arr.length === 0) return null;
+          const cleaned = arr
+            .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
+            .map((c) => ({
+              front: c.front.trim(),
+              back: c.back.trim(),
+              code: (typeof c.code === 'string' && c.code.trim()) ? c.code : null,
+            }))
+            // Server-side validation catches this too, but a bad row here would
+            // hit a `not null` DB constraint and toast a generic save failure,
+            // which is much noisier than falling back to the heuristic.
+            .filter((c) => c.front.length > 0 && c.back.length > 0);
+          return cleaned.length > 0 ? cleaned : null;
+        } catch (e) {
+          console.warn('[generate-cards] request threw', e);
+          return null;
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+
+      const cardRowFromFields = (noteId, { front, back, code }, source) => {
+        const now = todayStr();
+        return {
+          id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          user_id: user.id,
+          note_id: noteId,
+          front, back,
+          code: code || null,
+          source,
+          history: [],
+          next_review: addDays(now, RATING_INTERVALS[3]),
+          created_at: now,
+        };
+      };
+
+      const generateCards = async (noteId) => {
+        const note = notes.find((n) => n.id === noteId);
+        if (!note) return;
+        if (!(note.body || '').trim()) {
+          notify('Add a couple of paragraphs first — cards are pulled from your note body', 'error');
+          return;
+        }
+
+        // Primary path: OpenAI via the Edge Function.
+        const ai = await requestAiCards(note);
+        let rows, via;
+        if (ai && ai.length > 0) {
+          rows = ai.map((c) => cardRowFromFields(noteId, c, 'ai'));
+          via = 'AI';
+        } else {
+          // Fallback so the app still generates something when the Edge Function
+          // isn't deployed yet — the same paragraph-split heuristic as before.
+          rows = cardsFromBody(noteId, note.body);
+          via = 'heuristic';
+        }
+
+        if (rows.length === 0) {
+          notify('Add a couple of paragraphs first — cards are pulled from your note body', 'error');
+          return;
+        }
+        await insertCards(rows);
+        notify(`Generated ${rows.length} card${rows.length === 1 ? '' : 's'} via ${via} · next up in 5 days`, 'success');
+      };
+
+      const addManualCard = async (noteId, { front, back, code }) => {
+        const now = todayStr();
+        const row = {
+          id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          user_id: user.id,
+          note_id: noteId,
+          front: front.trim(),
+          back: back.trim(),
+          code: (code || '').trim() || null,
+          source: 'manual',
+          history: [],
+          next_review: now,
+          created_at: now,
+        };
+        await insertCards([row]);
+      };
+
+      const rateCard = async (id, rating) => {
+        const card = cards.find((c) => c.id === id);
+        if (!card) return;
+        const newHistory = [...(card.history || []), { date: todayStr(), rating }];
+        const newNextReview = addDays(todayStr(), RATING_INTERVALS[rating]);
+        const rollback = { history: card.history, next_review: card.next_review };
+        setCards((prev) => prev.map((c) =>
+          c.id === id ? { ...c, history: newHistory, next_review: newNextReview } : c
+        ));
+        const { error } = await runSb(() => sb.from('flashcards')
+          .update({ history: newHistory, next_review: newNextReview }).eq('id', id));
+        if (error) {
+          setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...rollback } : c)));
+          notify('Failed to save: ' + humaniseSbError(error), 'error');
+        }
+      };
+
+      const deleteCard = async (id) => {
+        let gone;
+        setCards((prev) => { gone = prev.find((c) => c.id === id); return prev.filter((c) => c.id !== id); });
+        const { error } = await runSb(() => sb.from('flashcards').delete().eq('id', id));
+        if (error) {
+          if (gone) setCards((prev) => [...prev, gone]);
+          notify('Failed to delete: ' + humaniseSbError(error), 'error');
+        }
+      };
+      // -----------------------------------------------------------------
+
       const addProblem = async (data) => {
         const newProblem = {
           id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -1940,10 +2452,22 @@
         };
         const prev = problems;
         setProblems([...problems, newProblem]);
-        setView('today');
         const { error } = await runSb(() => sb.from('problems').insert(newProblem));
-        if (error) { setProblems(prev); notify('Failed to save: ' + humaniseSbError(error), 'error'); }
-        else notify(`${newProblem.name} added · back in ${RATING_INTERVALS[data.rating]}d`, 'success');
+        if (error) { setProblems(prev); notify('Failed to save: ' + humaniseSbError(error), 'error'); return; }
+        notify(`${newProblem.name} added · back in ${RATING_INTERVALS[data.rating]}d`, 'success');
+
+        // Optional companion note pre-linked to the problem — the touchpoint the
+        // journey map calls out as the Add→Notes bridge.
+        if (data.startNote) {
+          const note = await addNote({
+            title: newProblem.name,
+            topic: newProblem.pattern,
+            body: newProblem.notes || '',
+            problem_id: newProblem.id,
+          });
+          if (note) { setView('notes'); return; }
+        }
+        setView('today');
       };
 
       const rateProblem = async (id, rating) => {
@@ -1996,7 +2520,16 @@
       const dueToday = problems
         .filter((p) => p.next_review <= today)
         .sort((a, b) => a.next_review.localeCompare(b.next_review));
-      const stats = { total: problems.length, due: dueToday.length };
+      const dueCards = cards
+        .filter((c) => c.next_review <= today)
+        .sort((a, b) => a.next_review.localeCompare(b.next_review));
+      const stats = {
+        total: problems.length,
+        due: dueToday.length,
+        notesTotal: notes.length,
+        cardsTotal: cards.length,
+        cardsDue: dueCards.length,
+      };
 
       const activeIndex = TABS.findIndex((t) => t.key === view);
 
@@ -2009,10 +2542,16 @@
               <div style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.3 }}>
                 {stats.due === 1 ? 'problem' : 'problems'} to review
               </div>
-              {stats.due === 0 && stats.total > 0 && (
+              {stats.due === 0 && stats.total > 0 && stats.cardsDue === 0 && (
                 <span className="pill pill-success" style={{ marginTop: 7 }}>
                   <IconCheck size={11} /> all clear
                 </span>
+              )}
+              {stats.cardsDue > 0 && (
+                <button onClick={() => goTo('notes')} className="pill pill-accent"
+                  style={{ marginTop: 7, cursor: 'pointer', border: 'none' }}>
+                  <IconBolt size={11} /> {stats.cardsDue} flashcard{stats.cardsDue === 1 ? '' : 's'} due
+                </button>
               )}
             </div>
           </div>
@@ -2043,6 +2582,17 @@
           {view === 'discover' && (
             <DiscoverView problems={problems} skips={skips}
               onLog={startLogging} onSkip={skipSuggestion} onResetSkips={resetSkips} />
+          )}
+          {view === 'notes' && (
+            <NotesView
+              notes={notes} cards={cards} problems={problems} today={today}
+              selectedId={selectedNoteId} onSelect={setSelectedNoteId}
+              onNewNote={() => addNote({ title: 'Untitled', topic: '', body: '' })}
+              onSaveNote={saveNote} onDeleteNote={deleteNote}
+              onGenerateCards={generateCards}
+              onAddCard={addManualCard}
+              onRateCard={rateCard} onDeleteCard={deleteCard}
+            />
           )}
           {view === 'add' && (
             <AddView onAdd={addProblem} prefill={addPrefill} onConsumePrefill={() => setAddPrefill(null)} />
@@ -2865,6 +3415,7 @@
       const [solution, setSolution] = useState('');
       const [notes, setNotes] = useState('');
       const [url, setUrl] = useState(prefill?.url || '');
+      const [startNote, setStartNote] = useState(false);
       const canSubmit = name.trim().length > 0 && pattern.trim().length > 0;
 
       // A prefill can arrive after mount (Discover -> Add) — apply it once and clear the
@@ -2879,9 +3430,9 @@
 
       const submit = () => {
         if (!canSubmit) return;
-        onAdd({ name, pattern, rating, solution, notes, url });
+        onAdd({ name, pattern, rating, solution, notes, url, startNote });
         setName(''); setPattern(''); setRating(4);
-        setSolution(''); setNotes(''); setUrl('');
+        setSolution(''); setNotes(''); setUrl(''); setStartNote(false);
       };
 
       return (
@@ -2933,6 +3484,18 @@
                 placeholder={leetcodeUrlFor(name) || 'https://…'} />
             </div>
           </div>
+
+          <label className="start-note-toggle" data-checked={startNote}>
+            <input type="checkbox" checked={startNote} onChange={(e) => setStartNote(e.target.checked)} />
+            <span className="start-note-body">
+              <span className="start-note-title">
+                <IconNotes size={13} /> Start a note for this
+              </span>
+              <span className="start-note-sub">
+                Opens a note pre-linked to the problem. You can jot the insight, then generate flashcards from it later.
+              </span>
+            </span>
+          </label>
 
           <button onClick={submit} disabled={!canSubmit} className="btn btn-primary btn-lg add-submit">
             <IconPlus size={16} /> Add to tracker
@@ -3031,6 +3594,411 @@
         </div>
       );
     }
+
+    // ============================================================
+    // Notes — freeform notes, generated flashcards, per-note quiz
+    // ============================================================
+    function NotesView({
+      notes, cards, problems, today,
+      selectedId, onSelect, onNewNote, onSaveNote, onDeleteNote,
+      onGenerateCards, onAddCard, onRateCard, onDeleteCard,
+    }) {
+      const selected = notes.find((n) => n.id === selectedId) || notes[0] || null;
+      useEffect(() => {
+        if (notes.length > 0 && !notes.some((n) => n.id === selectedId)) onSelect(notes[0].id);
+      }, [notes, selectedId]);
+
+      const cardsFor = (id) => cards.filter((c) => c.note_id === id);
+      const dueFor = (id) => cardsFor(id).filter((c) => c.next_review <= today).length;
+
+      if (notes.length === 0) {
+        return (
+          <EmptyState icon={<IconNotes size={22} />} title="No notes yet"
+            body="Freeform notes on anything worth remembering — a pattern, a system-design tradeoff, a story you want ready. Generate flashcards from any note and they join your review queue."
+            cta="Write a note" ctaIcon={<IconPencil size={14} />} onCta={onNewNote} />
+        );
+      }
+
+      return (
+        <div className="notes-shell anim-rise">
+          <aside className="notes-rail">
+            <div className="notes-rail-head">
+              <span className="eyebrow">Library</span>
+              <button onClick={onNewNote} className="btn btn-quiet btn-sm" aria-label="New note">
+                <IconPlus size={13} /> New
+              </button>
+            </div>
+            <div className="notes-list">
+              {notes.map((n) => {
+                const due = dueFor(n.id);
+                const total = cardsFor(n.id).length;
+                return (
+                  <button key={n.id} onClick={() => onSelect(n.id)}
+                    className="notes-item" data-active={selected && n.id === selected.id}>
+                    <span className="notes-item-title">{n.title || 'Untitled'}</span>
+                    <span className="notes-item-meta">
+                      <span className="mono" style={{ color: 'var(--accent)' }}>{n.topic || 'Unfiled'}</span>
+                      {total > 0 && (
+                        <span className={`pill ${due > 0 ? 'pill-accent' : ''}`} style={{ padding: '1px 6px', fontSize: 10 }}>
+                          {due > 0 ? `${due} due` : `${total} card${total === 1 ? '' : 's'}`}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          {selected && (
+            <NoteWorkspace
+              key={selected.id}
+              note={selected}
+              cards={cardsFor(selected.id)}
+              problem={problems.find((p) => p.id === selected.problem_id) || null}
+              today={today}
+              onSave={(patch) => onSaveNote(selected.id, patch)}
+              onDelete={() => onDeleteNote(selected.id)}
+              onGenerate={() => onGenerateCards(selected.id)}
+              onAddCard={(fields) => onAddCard(selected.id, fields)}
+              onRateCard={onRateCard}
+              onDeleteCard={onDeleteCard}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // The right pane. Owns its own draft state so typing in the editor never has to
+    // round-trip through the parent on every keystroke; a debounced effect writes
+    // back at ~600ms of quiet, matching the existing "silent save" pattern.
+    function NoteWorkspace({
+      note, cards, problem, today,
+      onSave, onDelete, onGenerate, onAddCard, onRateCard, onDeleteCard,
+    }) {
+      const [title, setTitle] = useState(note.title || '');
+      const [topic, setTopic] = useState(note.topic || '');
+      const [body, setBody] = useState(note.body || '');
+      const [tab, setTab] = useState('write');
+      const [confirmDel, setConfirmDel] = useState(false);
+      const [savedState, setSavedState] = useState('saved');
+
+      useEffect(() => { setTitle(note.title || ''); setTopic(note.topic || ''); setBody(note.body || ''); }, [note.id]);
+
+      // Refs so the unmount cleanup can flush the latest pending edit without
+      // relying on the closure of the mount effect (which sees only the first
+      // render's values). NotesView keys this component on selected.id, so an
+      // unmount here is either a note switch or leaving the tab — both need
+      // any pending debounce to commit before it goes.
+      const draftRef = useRef({ title, topic, body });
+      const dirtyRef = useRef(false);
+      const saveRef = useRef(onSave);
+      useEffect(() => { saveRef.current = onSave; }, [onSave]);
+      useEffect(() => { draftRef.current = { title, topic, body }; }, [title, topic, body]);
+
+      // Debounce persistence. If any of the three fields changes, wait for quiet
+      // and then commit. The saved-state indicator drives the "editing / saved"
+      // dot in the editor footer.
+      useEffect(() => {
+        if (title === (note.title || '') && topic === (note.topic || '') && body === (note.body || '')) {
+          dirtyRef.current = false;
+          return;
+        }
+        dirtyRef.current = true;
+        setSavedState('editing');
+        const h = setTimeout(() => {
+          onSave({ title, topic, body });
+          dirtyRef.current = false;
+          setSavedState('saved');
+        }, 600);
+        return () => clearTimeout(h);
+      }, [title, topic, body]);
+
+      // Flush any pending debounce on real unmount so a fast note-switch (or
+      // leaving the Notes tab) never drops the last <600ms of typing.
+      useEffect(() => () => {
+        if (dirtyRef.current) saveRef.current(draftRef.current);
+      }, []);
+
+      const dueCards = cards.filter((c) => c.next_review <= today);
+
+      return (
+        <section className="note-workspace">
+          <header className="note-head">
+            <input value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder="Untitled" className="note-title-input" />
+            <div className="note-sub">
+              <input value={topic} onChange={(e) => setTopic(e.target.value)}
+                placeholder="Topic (e.g. Sliding Window, System Design, Behavioral)"
+                className="note-topic-input mono" />
+              {problem && (
+                <span className="pill" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 600 }}>
+                  <IconLayers size={11} /> {problem.name}
+                </span>
+              )}
+              <span className="mono" style={{ color: 'var(--faint)', fontSize: 11, marginLeft: 'auto' }}>
+                {savedState === 'saved' ? (
+                  <><IconCheck size={11} /> saved</>
+                ) : (
+                  <>editing…</>
+                )}
+              </span>
+            </div>
+          </header>
+
+          <div className="note-tabs" role="tablist">
+            {[
+              { k: 'write', label: 'Write', Icon: IconPencil },
+              { k: 'cards', label: 'Cards', Icon: IconLayers, count: cards.length },
+              { k: 'quiz',  label: 'Quiz',  Icon: IconBolt,   count: dueCards.length, badge: dueCards.length > 0 },
+            ].map((t) => (
+              <button key={t.k} onClick={() => setTab(t.k)} role="tab"
+                aria-selected={tab === t.k} className="note-tab" data-active={tab === t.k}>
+                <t.Icon size={13} />
+                {t.label}
+                {typeof t.count === 'number' && (
+                  <span className="note-tab-count" data-hot={t.badge}>{t.count}</span>
+                )}
+              </button>
+            ))}
+            <div style={{ marginLeft: 'auto' }}>
+              {confirmDel ? (
+                <span className="flex items-center gap-1.5">
+                  <button onClick={onDelete} className="btn btn-danger btn-sm">Delete note</button>
+                  <button onClick={() => setConfirmDel(false)} className="btn btn-ghost btn-sm">Cancel</button>
+                </span>
+              ) : (
+                <button onClick={() => setConfirmDel(true)} className="btn btn-quiet btn-sm">
+                  <IconTrash size={12} /> Delete
+                </button>
+              )}
+            </div>
+          </div>
+
+          {tab === 'write' && (
+            <NoteWritePanel body={body} setBody={setBody} onGenerate={onGenerate} />
+          )}
+          {tab === 'cards' && (
+            <NoteCardsPanel cards={cards} today={today}
+              onGenerate={onGenerate} onAddCard={onAddCard} onDeleteCard={onDeleteCard} />
+          )}
+          {tab === 'quiz' && (
+            <NoteQuizPanel cards={cards} dueCards={dueCards} onRate={onRateCard} />
+          )}
+        </section>
+      );
+    }
+
+    function NoteWritePanel({ body, setBody, onGenerate }) {
+      return (
+        <div className="anim-fade">
+          <textarea value={body} onChange={(e) => setBody(e.target.value)}
+            className="note-body-editor"
+            placeholder="Jot the idea, the tradeoff, the number you keep forgetting. Paragraphs (blank line between them) each become a flashcard when you hit Generate." />
+          <div className="generate-cta">
+            <div>
+              <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 4 }}>Turn this note into a quiz</div>
+              <div className="display" style={{ fontSize: 22, lineHeight: 1.2 }}>Generate flashcards</div>
+              <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55, margin: '6px 0 0', maxWidth: '46ch' }}>
+                Each paragraph becomes a card. Recall drops them into your review queue on the same 30 / 12 / 5 / 2 rhythm as your LeetCode problems.
+              </p>
+            </div>
+            <button onClick={onGenerate} className="btn btn-primary">
+              <IconBolt size={14} /> Generate cards
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function NoteCardsPanel({ cards, today, onGenerate, onAddCard, onDeleteCard }) {
+      const [showForm, setShowForm] = useState(false);
+      const [front, setFront] = useState('');
+      const [back, setBack] = useState('');
+      const canAdd = front.trim().length > 0 && back.trim().length > 0;
+
+      const dueCount = cards.filter((c) => c.next_review <= today).length;
+
+      return (
+        <div className="anim-fade">
+          <div className="cards-summary">
+            <div className="stat-tile"><div className="k">Cards</div><div className="v tnum">{cards.length}</div></div>
+            <div className="stat-tile accent"><div className="k">Due today</div><div className="v tnum">{dueCount}</div></div>
+            <div className="stat-tile">
+              <div className="k">Sources</div>
+              <div className="v tnum" style={{ fontSize: 18, paddingTop: 6 }}>
+                {cards.filter((c) => c.source !== 'manual').length}g / {cards.filter((c) => c.source === 'manual').length}m
+              </div>
+            </div>
+          </div>
+
+          {cards.length === 0 ? (
+            <div className="inset dashed" style={{ padding: 24, textAlign: 'center' }}>
+              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 14px' }}>
+                No cards yet. Write a note and hit Generate, or add one by hand.
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={onGenerate} className="btn btn-primary btn-sm"><IconBolt size={12} /> Generate from note</button>
+                <button onClick={() => setShowForm(true)} className="btn btn-ghost btn-sm"><IconPlus size={12} /> Add manually</button>
+              </div>
+            </div>
+          ) : (
+            <div className="stack-3">
+              {cards.map((c, i) => (
+                <article key={c.id} className="card" style={{ padding: 18 }}>
+                  <div className="flex items-start justify-between gap-3" style={{ marginBottom: 10 }}>
+                    <div className="mono" style={{ fontSize: 10, color: 'var(--faint)', letterSpacing: '0.08em', paddingTop: 4 }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                    <div style={{ flex: 1, fontFamily: 'var(--font-display)', fontSize: 18, lineHeight: 1.3 }}>
+                      {c.front}
+                    </div>
+                    <button onClick={() => onDeleteCard(c.id)} className="icon-btn" aria-label="Delete card">
+                      <IconTrash size={13} />
+                    </button>
+                  </div>
+                  <div style={{ paddingTop: 10, borderTop: '1px dashed var(--border)', color: 'var(--text)', fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {c.back}
+                  </div>
+                  {c.code && (
+                    <pre className="code" style={{ marginTop: 10 }}>{c.code}</pre>
+                  )}
+                  <div className="flex items-center gap-2" style={{ marginTop: 12, fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                    <span className="pill" style={{ padding: '1px 7px', fontSize: 10 }}>{c.source}</span>
+                    <span>next {c.next_review}</span>
+                    {c.history && c.history.length > 0 && <span>· {c.history.length} review{c.history.length === 1 ? '' : 's'}</span>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {showForm ? (
+            <div className="card" style={{ padding: 16, marginTop: 14 }}>
+              <div className="stack-3">
+                <Field label="Front (the prompt)" value={front} onChange={setFront}
+                  placeholder="A question to ask yourself." rows={2} inset />
+                <Field label="Back (what to recall)" value={back} onChange={setBack}
+                  placeholder="The answer, the tradeoff, the number." rows={4} inset />
+                <div className="flex gap-2">
+                  <button className="btn btn-primary btn-sm" disabled={!canAdd}
+                    onClick={async () => { await onAddCard({ front, back }); setFront(''); setBack(''); setShowForm(false); }}>
+                    <IconCheck size={13} /> Add card
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          ) : cards.length > 0 && (
+            <div className="flex items-center gap-2" style={{ marginTop: 14 }}>
+              <button onClick={onGenerate} className="btn btn-ghost btn-sm"><IconBolt size={12} /> Regenerate from note</button>
+              <button onClick={() => setShowForm(true)} className="btn btn-ghost btn-sm"><IconPlus size={12} /> Add card</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function NoteQuizPanel({ cards, dueCards, onRate }) {
+      const [reviewAll, setReviewAll] = useState(false);
+      // Snapshot the queue at session start so a rating (which pushes the card's
+      // next_review out and drops it from `dueCards`) doesn't cause `idx` to
+      // skip the very next card. `cards` is still the source of truth for the
+      // rendered content — we look each id back up so a mid-session edit or
+      // delete is reflected.
+      const [queueIds, setQueueIds] = useState(() => dueCards.map((c) => c.id));
+      const [idx, setIdx] = useState(0);
+      const [revealed, setRevealed] = useState(false);
+
+      useEffect(() => {
+        const source = reviewAll ? cards : dueCards;
+        setQueueIds(source.map((c) => c.id));
+        setIdx(0);
+        setRevealed(false);
+      }, [reviewAll]);
+
+      // A card in the queue can vanish (user deleted it in the Cards tab).
+      // Skip forward instead of rendering nothing.
+      const card = idx < queueIds.length ? cards.find((c) => c.id === queueIds[idx]) : null;
+      useEffect(() => {
+        if (idx < queueIds.length && !card) {
+          setIdx((i) => i + 1);
+          setRevealed(false);
+        }
+      }, [card, idx, queueIds.length]);
+
+      if (cards.length === 0) {
+        return (
+          <div className="inset dashed anim-fade" style={{ padding: 30, textAlign: 'center' }}>
+            <p style={{ color: 'var(--muted)', fontSize: 13, margin: 0 }}>
+              No cards to review yet. Generate some from the Write tab first.
+            </p>
+          </div>
+        );
+      }
+
+      if (queueIds.length === 0 || idx >= queueIds.length) {
+        return (
+          <div className="card anim-fade" style={{ padding: 32, textAlign: 'center' }}>
+            <div className="display" style={{ fontSize: 28, lineHeight: 1.2, marginBottom: 8 }}>Queue clear</div>
+            <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 auto 18px', maxWidth: 40 * 8 }}>
+              {reviewAll ? 'You went through every card in this note.' : 'No cards due for this note today. Great time to reinforce another topic.'}
+            </p>
+            {!reviewAll && (
+              <button onClick={() => setReviewAll(true)} className="btn btn-ghost btn-sm">
+                Review all {cards.length} anyway
+              </button>
+            )}
+          </div>
+        );
+      }
+
+      if (!card) return null; // brief render between the deletion skip and the next tick
+
+      const pct = Math.round((idx / queueIds.length) * 100);
+
+      const handleRate = (r) => {
+        onRate(card.id, r);
+        setRevealed(false);
+        setIdx((i) => i + 1);
+      };
+
+      return (
+        <div className="quiz-stage anim-fade">
+          <div className="quiz-progress">
+            <span className="mono">Card {idx + 1} of {queueIds.length}</span>
+            <div className="progress-track"><div className="progress-fill" style={{ width: pct + '%' }} /></div>
+            <span className="mono">{pct}%</span>
+          </div>
+
+          <div className="quiz-card">
+            <div className="display quiz-question">{card.front}</div>
+            {revealed && (
+              <>
+                <div className="quiz-answer">
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{card.back}</div>
+                  {card.code && <pre className="code" style={{ marginTop: 10 }}>{card.code}</pre>}
+                </div>
+                <div>
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>How did it go?</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[4, 3, 2, 1].map((r) => (
+                      <RatingButton key={r} rating={r} selected={false} onClick={() => handleRate(r)} />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            {!revealed && (
+              <button onClick={() => setRevealed(true)} className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
+                <IconEye size={15} /> Reveal answer
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+    // ============================================================
 
     function EmptyState({ icon, title, body, cta, onCta, ctaIcon }) {
       return (
