@@ -2259,7 +2259,7 @@
             note_id: noteId,
             front, back,
             code: null,
-            source: 'generated',
+            source: 'heuristic',
             history: [],
             next_review: nextReview,
             created_at: now,
@@ -2267,16 +2267,92 @@
         });
       };
 
+      // Ask the generate-cards Edge Function to produce flashcards with OpenAI.
+      // Returns an array of {front, back, code?} on success, or null on any
+      // failure so the caller can fall back to the client-side heuristic.
+      // We treat "not deployed / not configured" and "auth failed" as the same
+      // fallback path — the app should keep working with the heuristic even
+      // before the function is set up.
+      const requestAiCards = async (note) => {
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          if (!session) return null;
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-cards`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              title: note.title || '',
+              topic: note.topic || '',
+              body: note.body || '',
+            }),
+          });
+          if (!resp.ok) {
+            const body = await resp.text().catch(() => '');
+            console.warn('[generate-cards] failed', resp.status, body.slice(0, 200));
+            return null;
+          }
+          const data = await resp.json();
+          const arr = Array.isArray(data?.cards) ? data.cards : null;
+          if (!arr || arr.length === 0) return null;
+          return arr
+            .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
+            .map((c) => ({
+              front: c.front.trim(),
+              back: c.back.trim(),
+              code: (typeof c.code === 'string' && c.code.trim()) ? c.code : null,
+            }));
+        } catch (e) {
+          console.warn('[generate-cards] request threw', e);
+          return null;
+        }
+      };
+
+      const cardRowFromFields = (noteId, { front, back, code }, source) => {
+        const now = todayStr();
+        return {
+          id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          user_id: user.id,
+          note_id: noteId,
+          front, back,
+          code: code || null,
+          source,
+          history: [],
+          next_review: addDays(now, RATING_INTERVALS[3]),
+          created_at: now,
+        };
+      };
+
       const generateCards = async (noteId) => {
         const note = notes.find((n) => n.id === noteId);
         if (!note) return;
-        const rows = cardsFromBody(noteId, note.body);
+        if (!(note.body || '').trim()) {
+          notify('Add a couple of paragraphs first — cards are pulled from your note body', 'error');
+          return;
+        }
+
+        // Primary path: OpenAI via the Edge Function.
+        const ai = await requestAiCards(note);
+        let rows, via;
+        if (ai && ai.length > 0) {
+          rows = ai.map((c) => cardRowFromFields(noteId, c, 'ai'));
+          via = 'AI';
+        } else {
+          // Fallback so the app still generates something when the Edge Function
+          // isn't deployed yet — the same paragraph-split heuristic as before.
+          rows = cardsFromBody(noteId, note.body);
+          via = 'heuristic';
+        }
+
         if (rows.length === 0) {
           notify('Add a couple of paragraphs first — cards are pulled from your note body', 'error');
           return;
         }
         await insertCards(rows);
-        notify(`Generated ${rows.length} card${rows.length === 1 ? '' : 's'} · next up in 5 days`, 'success');
+        notify(`Generated ${rows.length} card${rows.length === 1 ? '' : 's'} via ${via} · next up in 5 days`, 'success');
       };
 
       const addManualCard = async (noteId, { front, back, code }) => {
@@ -3687,7 +3763,7 @@
             <div className="stat-tile">
               <div className="k">Sources</div>
               <div className="v tnum" style={{ fontSize: 18, paddingTop: 6 }}>
-                {cards.filter((c) => c.source === 'generated').length}g / {cards.filter((c) => c.source === 'manual').length}m
+                {cards.filter((c) => c.source !== 'manual').length}g / {cards.filter((c) => c.source === 'manual').length}m
               </div>
             </div>
           </div>

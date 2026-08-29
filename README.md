@@ -190,6 +190,60 @@ problem AND spawns a note pre-linked to it (title = problem name, topic = patter
 body = the notes field). The app then drops you straight into the Notes tab with that
 note selected, ready to jot the insight and generate cards from it.
 
+### Card generation
+
+Two paths, decided at request time:
+
+1. **OpenAI (primary)** — the client posts the note to a Supabase Edge Function
+   (`supabase/functions/generate-cards`), which forwards it to OpenAI and returns
+   JSON flashcards. Each card is tagged `source: 'ai'`. See the deploy steps
+   below.
+2. **Heuristic (fallback)** — client-side, no network. Splits the note body on
+   blank lines and each paragraph on the first colon or sentence to build a
+   front / back pair. Cards are tagged `source: 'heuristic'`. This is what runs
+   before you deploy the Edge Function, or any time the OpenAI request fails.
+
+The toast that fires after generation names the path so you know which one ran
+("Generated 4 cards via AI · next up in 5 days" vs "… via heuristic …"). Cards
+already in the note aren't touched — Regenerate always **adds** cards, never
+replaces them, so you can accumulate and prune by hand.
+
+### Deploying the OpenAI Edge Function
+
+The function is defined in `supabase/functions/generate-cards/`. Install the
+Supabase CLI, log in, link your project, then:
+
+```bash
+# One-time setup
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+
+# Store your OpenAI key as a Function secret (never commit it)
+supabase secrets set OPENAI_API_KEY=sk-...
+
+# Optional: choose a model. Defaults to gpt-4o-mini.
+supabase secrets set OPENAI_MODEL=gpt-4o-mini
+
+# Deploy
+supabase functions deploy generate-cards
+```
+
+That's it. The Supabase gateway verifies the caller's JWT before the handler
+runs, so anonymous requests never reach OpenAI. The client sends the note body
+and the current session's access token; the function returns
+`{ cards: [{ front, back, code }] }` on success or an error envelope on
+failure. Any non-2xx response makes the client fall back to the heuristic,
+silently, so a broken key never breaks card generation entirely.
+
+To iterate locally without redeploying:
+
+```bash
+supabase functions serve generate-cards --env-file supabase/functions/.env.local
+```
+
+Rough per-card cost with `gpt-4o-mini`: a typical note produces 3–8 cards for
+well under a cent. Bigger models are trivial to swap via `OPENAI_MODEL`.
+
 The rail's due-count on **Today** now also flags flashcards: if any cards are due,
 a small "N flashcards due" pill sits below the problem count and jumps to Notes so
 one morning session covers both queues.
