@@ -89,10 +89,16 @@ Deno.serve(async (req) => {
   const title = (payload.title || "").toString().slice(0, 200);
   const topic = (payload.topic || "").toString().slice(0, 200);
 
+  // Bound the upstream call. The client already has its own 30s ceiling; this
+  // guard runs a few seconds under it so we still return a real 504 rather than
+  // the client's abort message when OpenAI stalls.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 25000);
   let oai: Response;
   try {
     oai = await fetch(OPENAI_URL, {
       method: "POST",
+      signal: ctrl.signal,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
@@ -108,8 +114,11 @@ Deno.serve(async (req) => {
       }),
     });
   } catch (e) {
-    return json({ error: "openai request failed", detail: String(e) }, 502);
+    clearTimeout(timer);
+    const aborted = (e as any)?.name === "AbortError";
+    return json({ error: aborted ? "openai request timed out" : "openai request failed" }, aborted ? 504 : 502);
   }
+  clearTimeout(timer);
 
   if (!oai.ok) {
     const detail = await oai.text().catch(() => "");

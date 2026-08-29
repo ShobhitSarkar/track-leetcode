@@ -2243,12 +2243,14 @@
           const colon = p.indexOf(':');
           const period = p.search(/[.!?]\s/);
           let front, back;
-          if (colon > 3 && colon < 80) {
+          const afterColon = colon >= 0 ? p.slice(colon + 1).trim() : '';
+          const afterPeriod = period >= 0 ? p.slice(period + 1).trim() : '';
+          if (colon > 3 && colon < 80 && afterColon.length > 0) {
             front = p.slice(0, colon).trim() + '?';
-            back = p.slice(colon + 1).trim();
-          } else if (period > 3 && period < 140) {
+            back = afterColon;
+          } else if (period > 3 && period < 140 && afterPeriod.length > 0) {
             front = p.slice(0, period + 1).trim();
-            back = p.slice(period + 1).trim();
+            back = afterPeriod;
           } else {
             front = 'Recall this passage:';
             back = p;
@@ -2274,11 +2276,17 @@
       // fallback path — the app should keep working with the heuristic even
       // before the function is set up.
       const requestAiCards = async (note) => {
+        // Guard against a hung upstream — the client walks away after 30s and
+        // the heuristic fires instead, so the Generate button never leaves the
+        // user staring at a spinner longer than that.
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 30000);
         try {
           const { data: { session } } = await sb.auth.getSession();
           if (!session) return null;
           const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-cards`, {
             method: 'POST',
+            signal: ctrl.signal,
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
@@ -2298,16 +2306,23 @@
           const data = await resp.json();
           const arr = Array.isArray(data?.cards) ? data.cards : null;
           if (!arr || arr.length === 0) return null;
-          return arr
+          const cleaned = arr
             .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
             .map((c) => ({
               front: c.front.trim(),
               back: c.back.trim(),
               code: (typeof c.code === 'string' && c.code.trim()) ? c.code : null,
-            }));
+            }))
+            // Server-side validation catches this too, but a bad row here would
+            // hit a `not null` DB constraint and toast a generic save failure,
+            // which is much noisier than falling back to the heuristic.
+            .filter((c) => c.front.length > 0 && c.back.length > 0);
+          return cleaned.length > 0 ? cleaned : null;
         } catch (e) {
           console.warn('[generate-cards] request threw', e);
           return null;
+        } finally {
+          clearTimeout(timer);
         }
       };
 

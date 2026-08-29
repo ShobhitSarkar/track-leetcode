@@ -83,11 +83,31 @@ create table if not exists public.notes (
   user_id       uuid not null references auth.users(id) on delete cascade,
   problem_id    text references public.problems(id) on delete set null,
   title         text not null,
-  pattern       text,
+  topic         text,
   body          text not null default '',
   updated_at    timestamptz not null default now(),
   created_at    timestamptz not null default now()
 );
+
+-- Migration: the first cut of this schema called the taxonomy column `pattern`
+-- (borrowed from problems.pattern), but the app always used `topic` for a note
+-- since a note isn't necessarily about a LeetCode pattern. `create table if not
+-- exists` above is a no-op on an existing table, so this rename is what
+-- actually fixes the column name for anyone who already ran the earlier
+-- schema. Wrapped in a do-block so it's idempotent — it only fires when the
+-- old column is still present.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'notes' and column_name = 'pattern'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'notes' and column_name = 'topic'
+  ) then
+    alter table public.notes rename column pattern to topic;
+  end if;
+end $$;
 
 create index if not exists notes_user_updated_idx
   on public.notes (user_id, updated_at desc);
