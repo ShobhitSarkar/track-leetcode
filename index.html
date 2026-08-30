@@ -1048,7 +1048,8 @@
       background: var(--primary); border-radius: 999px;
     }
     .notes-item-title { font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em;
-      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      line-height: 1.35; }
     .notes-item-meta {
       display: flex; align-items: center; gap: 8px;
       font-family: var(--font-mono); font-size: 10px; color: var(--muted);
@@ -1059,86 +1060,38 @@
       min-width: 0;
     }
     .note-head { display: flex; flex-direction: column; gap: 8px; }
-    .note-title-input {
-      background: transparent; border: none; outline: none;
-      font-family: var(--font-display); font-size: 34px; line-height: 1.15;
-      letter-spacing: -0.015em; color: var(--text); width: 100%;
-      padding: 4px 0;
+    .note-display-title {
+      font-family: var(--font-display); font-size: 22px; line-height: 1.25;
+      letter-spacing: -0.01em; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; min-width: 0;
     }
-    .note-title-input::placeholder { color: var(--faint); }
-    .note-sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .note-topic-input {
-      background: var(--inset); border: 1px solid transparent;
-      border-radius: 999px; padding: 4px 10px;
-      font-size: 11px; color: var(--accent); outline: none; min-width: 220px;
-      transition: border-color 130ms;
-    }
-    .note-topic-input:focus { border-color: var(--accent); background: var(--surface-2); }
-    .note-topic-input::placeholder { color: var(--faint); }
-
-    .note-tabs {
-      display: flex; align-items: center; gap: 4px;
-      background: var(--tabs-bg); padding: 4px;
-      border-radius: var(--r-md);
-    }
-    .note-tab {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 12px; border-radius: 8px;
-      font-size: 12.5px; font-weight: 500; color: var(--muted);
-      background: transparent; border: none; cursor: pointer;
-      transition: color 130ms, background 130ms;
-    }
-    .note-tab:hover { color: var(--text); }
-    .note-tab[data-active="true"] {
-      background: var(--surface-2); color: var(--text);
-      box-shadow: var(--shadow-sm);
-    }
-    .note-tab-count {
-      font-family: var(--font-mono); font-size: 10px;
-      background: var(--inset); color: var(--muted);
-      padding: 1px 6px; border-radius: 999px; min-width: 18px; text-align: center;
-    }
-    .note-tab-count[data-hot="true"] { background: var(--accent-soft); color: var(--accent); }
 
     .note-body-editor {
-      width: 100%; min-height: 320px; resize: vertical;
+      width: 100%; min-height: 420px; resize: vertical;
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: 20px 22px;
-      font-family: var(--font-sans); font-size: 14.5px; line-height: 1.65;
+      border-radius: var(--r-lg); padding: 22px 24px;
+      font-family: var(--font-mono); font-size: 14px; line-height: 1.7;
       color: var(--text); outline: none;
       box-shadow: var(--shadow-sm);
       transition: border-color 130ms, box-shadow 130ms;
+      white-space: pre-wrap;
     }
     .note-body-editor:focus { border-color: var(--border-strong); }
     .note-body-editor::placeholder { color: var(--faint); }
 
-    .generate-cta {
-      margin-top: 16px;
-      border: 1px solid var(--border);
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      border-radius: var(--r-lg);
-      padding: 20px 22px;
-      display: flex; align-items: center; justify-content: space-between; gap: 20px;
-      box-shadow: var(--shadow-sm);
+    .note-footer {
+      margin-top: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
       flex-wrap: wrap;
+      padding: 10px 4px 0;
     }
-
-    .cards-summary {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px; margin-bottom: 16px;
+    .note-footer-stats {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-mono); font-size: 12px; color: var(--muted);
     }
-    .stat-tile {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 12px 14px;
-    }
-    .stat-tile .k {
-      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
-      text-transform: uppercase; color: var(--muted);
-    }
-    .stat-tile .v {
-      font-family: var(--font-display); font-size: 28px; letter-spacing: -0.01em; margin-top: 2px;
-    }
-    .stat-tile.accent .v { color: var(--primary); }
+    .note-footer-stats .accent { color: var(--accent); }
+    .note-footer-stats .dot { color: var(--faint); }
 
     .quiz-stage {
       background: var(--surface);
@@ -2174,14 +2127,24 @@
         setCards(data || []);
       };
 
-      const addNote = async ({ title, topic, body, problem_id }) => {
+      // Title is the first non-empty line of the body, trimmed to a display-friendly
+      // length. Falls back to an explicit title (used when a note is spun up from
+      // a problem row and the body starts empty) and finally "Untitled".
+      const deriveTitle = (body, fallback) => {
+        const first = (body || '').split('\n').map((l) => l.trim()).find((l) => l.length > 0);
+        if (first) return first.slice(0, 120);
+        return (fallback || '').trim() || 'Untitled';
+      };
+
+      const addNote = async ({ title, body, problem_id }) => {
         const now = new Date().toISOString();
+        const initialBody = body || '';
         const newNote = {
           id: `n_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           user_id: user.id,
-          title: (title || 'Untitled').trim(),
-          topic: (topic || '').trim() || null,
-          body: (body || ''),
+          title: deriveTitle(initialBody, title),
+          topic: null,
+          body: initialBody,
           problem_id: problem_id || null,
           updated_at: now,
           created_at: now,
@@ -2196,14 +2159,17 @@
           notify('Failed to save note: ' + humaniseSbError(error), 'error');
           return null;
         }
+        // If the seed body already has content, reconcile immediately so its
+        // cards are around for the first review.
+        if (initialBody.trim()) reconcileNoteCards(newNote.id, initialBody);
         return newNote;
       };
 
       const saveNote = async (id, patch) => {
+        const body = patch.body ?? '';
         const clean = {
-          title: (patch.title ?? '').trim() || 'Untitled',
-          topic: (patch.topic ?? '').trim() || null,
-          body: patch.body ?? '',
+          title: deriveTitle(body, patch.title),
+          body,
           updated_at: new Date().toISOString(),
         };
         let restored;
@@ -2215,7 +2181,9 @@
         if (error) {
           if (restored) setNotes((prev) => prev.map((n) => (n.id === id ? restored : n)));
           notify('Failed to save note: ' + humaniseSbError(error), 'error');
+          return;
         }
+        reconcileNoteCards(id, body);
       };
 
       const deleteNote = async (id) => {
@@ -2234,178 +2202,117 @@
         }
       };
 
-      const insertCards = async (rows) => {
-        if (rows.length === 0) return;
-        // Functional setState because the AI path awaits up to 30s before the
-        // DB write returns; a stale `prev` snapshot would clobber ratings,
-        // deletes, or newly inserted cards that landed in between.
-        setCards((prev) => [...prev, ...rows]);
-        const rowIds = new Set(rows.map((r) => r.id));
-        const { error } = await runSb(() => sb.from('flashcards').insert(rows));
-        if (error) {
-          setCards((prev) => prev.filter((c) => !rowIds.has(c.id)));
-          notify('Failed to save cards: ' + humaniseSbError(error), 'error');
-        }
-      };
-
-      // Client-side card extraction from a note body. Naive but honest:
-      // split on blank lines, take the paragraphs of at least ~20 chars, and split
-      // each on the first colon or first sentence so the front is a natural prompt
-      // and the back is the elaboration. If neither pattern is present we still
-      // create a "recall this passage" card so nothing gets dropped silently.
-      const cardsFromBody = (noteId, body) => {
+      // The note body IS the deck. Each blank-line-separated block becomes one
+      // card: first non-empty line is the prompt, the rest is the answer. This
+      // is the entire authoring surface — no title, no topic, no "Generate"
+      // button. Typing filler turns into a stupid card, which is the point:
+      // the friction of seeing a bad card should push the user toward writing
+      // only what's worth remembering.
+      const derivedCardsFromBody = (noteId, body) => {
         const now = todayStr();
         const nextReview = addDays(now, RATING_INTERVALS[3]);
-        const paragraphs = (body || '')
+        const blocks = (body || '')
           .split(/\n\s*\n/)
-          .map((p) => p.trim())
-          .filter((p) => p.length > 20);
-        return paragraphs.map((p) => {
-          const colon = p.indexOf(':');
-          const period = p.search(/[.!?]\s/);
-          let front, back;
-          const afterColon = colon >= 0 ? p.slice(colon + 1).trim() : '';
-          const afterPeriod = period >= 0 ? p.slice(period + 1).trim() : '';
-          if (colon > 3 && colon < 80 && afterColon.length > 0) {
-            front = p.slice(0, colon).trim() + '?';
-            back = afterColon;
-          } else if (period > 3 && period < 140 && afterPeriod.length > 0) {
-            front = p.slice(0, period + 1).trim();
-            back = afterPeriod;
-          } else {
-            front = 'Recall this passage:';
-            back = p;
-          }
-          return {
-            id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          .map((p) => p.replace(/\s+$/g, '').replace(/^\s+/g, ''))
+          .filter((p) => p.length > 0);
+        const out = [];
+        for (const block of blocks) {
+          const lines = block.split('\n');
+          const front = (lines.shift() || '').trim();
+          const back = lines.join('\n').trim();
+          if (!front) continue;
+          // A one-liner (no answer body) isn't a flashcard yet — treat it as a
+          // draft prompt and skip it so we don't churn out empty cards on every
+          // keystroke while the user is still typing.
+          if (!back) continue;
+          out.push({
+            id: cardIdFor(noteId, front),
             user_id: user.id,
             note_id: noteId,
-            front, back,
+            front,
+            back,
             code: null,
-            source: 'heuristic',
+            source: 'note',
             history: [],
             next_review: nextReview,
             created_at: now,
-          };
-        });
-      };
-
-      // Ask the generate-cards Edge Function to produce flashcards with OpenAI.
-      // Returns an array of {front, back, code?} on success, or null on any
-      // failure so the caller can fall back to the client-side heuristic.
-      // We treat "not deployed / not configured" and "auth failed" as the same
-      // fallback path — the app should keep working with the heuristic even
-      // before the function is set up.
-      const requestAiCards = async (note) => {
-        // Guard against a hung upstream — the client walks away after 30s and
-        // the heuristic fires instead, so the Generate button never leaves the
-        // user staring at a spinner longer than that.
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 30000);
-        try {
-          const { data: { session } } = await sb.auth.getSession();
-          if (!session) return null;
-          const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-cards`, {
-            method: 'POST',
-            signal: ctrl.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
-              title: note.title || '',
-              topic: note.topic || '',
-              body: note.body || '',
-            }),
           });
-          if (!resp.ok) {
-            const body = await resp.text().catch(() => '');
-            console.warn('[generate-cards] failed', resp.status, body.slice(0, 200));
-            return null;
-          }
-          const data = await resp.json();
-          const arr = Array.isArray(data?.cards) ? data.cards : null;
-          if (!arr || arr.length === 0) return null;
-          const cleaned = arr
-            .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
-            .map((c) => ({
-              front: c.front.trim(),
-              back: c.back.trim(),
-              code: (typeof c.code === 'string' && c.code.trim()) ? c.code : null,
-            }))
-            // Server-side validation catches this too, but a bad row here would
-            // hit a `not null` DB constraint and toast a generic save failure,
-            // which is much noisier than falling back to the heuristic.
-            .filter((c) => c.front.length > 0 && c.back.length > 0);
-          return cleaned.length > 0 ? cleaned : null;
-        } catch (e) {
-          console.warn('[generate-cards] request threw', e);
-          return null;
-        } finally {
-          clearTimeout(timer);
         }
+        // Same front twice collapses to the last one seen (using a Map keyed by
+        // the deterministic id) so the DB never sees a primary-key conflict.
+        const dedup = new Map();
+        for (const c of out) dedup.set(c.id, c);
+        return Array.from(dedup.values());
       };
 
-      const cardRowFromFields = (noteId, { front, back, code }, source) => {
-        const now = todayStr();
-        return {
-          id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          user_id: user.id,
-          note_id: noteId,
-          front, back,
-          code: code || null,
-          source,
-          history: [],
-          next_review: addDays(now, RATING_INTERVALS[3]),
-          created_at: now,
-        };
+      // Deterministic card id: same note + same front ⇒ same id, across sessions
+      // and across browsers. This is what lets reconcile-on-save preserve review
+      // history for a card whose prompt hasn't changed (even if the answer was
+      // tweaked). djb2 on the front, base36, kept short.
+      const cardIdFor = (noteId, front) => {
+        let h = 5381;
+        const s = front.trim();
+        for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+        return `c_${noteId.slice(-8)}_${h.toString(36)}`;
       };
 
-      const generateCards = async (noteId) => {
-        const note = notes.find((n) => n.id === noteId);
-        if (!note) return;
-        if (!(note.body || '').trim()) {
-          notify('Add a couple of paragraphs first — cards are pulled from your note body', 'error');
-          return;
-        }
+      // Diff derived cards against what's stored for this note, then apply the
+      // minimum set of writes: insert new prompts, delete removed ones, and
+      // update the answer text when only the back changed. History and
+      // next_review always survive an update — editing the answer isn't a
+      // reason to reset the spaced-repetition schedule.
+      const reconcileNoteCards = async (noteId, body) => {
+        const derived = derivedCardsFromBody(noteId, body);
+        // Read straight from React state via the setter callback so a rapid
+        // sequence of saves (a fast typist) reconciles against the freshest
+        // known cards, not a snapshot from the debounce closure.
+        let existing = [];
+        setCards((prev) => { existing = prev.filter((c) => c.note_id === noteId); return prev; });
+        const existingById = new Map(existing.map((c) => [c.id, c]));
+        const derivedById = new Map(derived.map((c) => [c.id, c]));
 
-        // Primary path: OpenAI via the Edge Function.
-        const ai = await requestAiCards(note);
-        let rows, via;
-        if (ai && ai.length > 0) {
-          rows = ai.map((c) => cardRowFromFields(noteId, c, 'ai'));
-          via = 'AI';
-        } else {
-          // Fallback so the app still generates something when the Edge Function
-          // isn't deployed yet — the same paragraph-split heuristic as before.
-          rows = cardsFromBody(noteId, note.body);
-          via = 'heuristic';
-        }
+        const toInsert = derived.filter((d) => !existingById.has(d.id));
+        const toDelete = existing.filter((c) => !derivedById.has(c.id));
+        const toUpdate = derived
+          .filter((d) => existingById.has(d.id))
+          .map((d) => ({ existing: existingById.get(d.id), next: d }))
+          .filter(({ existing, next }) => existing.back !== next.back);
 
-        if (rows.length === 0) {
-          notify('Add a couple of paragraphs first — cards are pulled from your note body', 'error');
-          return;
-        }
-        await insertCards(rows);
-        notify(`Generated ${rows.length} card${rows.length === 1 ? '' : 's'} via ${via} · next up in 5 days`, 'success');
-      };
+        if (toInsert.length === 0 && toDelete.length === 0 && toUpdate.length === 0) return;
 
-      const addManualCard = async (noteId, { front, back, code }) => {
-        const now = todayStr();
-        const row = {
-          id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          user_id: user.id,
-          note_id: noteId,
-          front: front.trim(),
-          back: back.trim(),
-          code: (code || '').trim() || null,
-          source: 'manual',
-          history: [],
-          next_review: now,
-          created_at: now,
-        };
-        await insertCards([row]);
+        // Optimistic local update first, then the DB writes in parallel.
+        setCards((prev) => {
+          const removed = new Set(toDelete.map((c) => c.id));
+          const updatedById = new Map(toUpdate.map(({ next, existing }) =>
+            [existing.id, { ...existing, back: next.back }]));
+          const kept = prev
+            .filter((c) => !removed.has(c.id))
+            .map((c) => updatedById.get(c.id) || c);
+          return [...kept, ...toInsert];
+        });
+
+        const jobs = [];
+        if (toInsert.length > 0) {
+          jobs.push(runSb(() => sb.from('flashcards').insert(toInsert)));
+        }
+        if (toDelete.length > 0) {
+          jobs.push(runSb(() => sb.from('flashcards')
+            .delete().in('id', toDelete.map((c) => c.id))));
+        }
+        for (const { existing, next } of toUpdate) {
+          jobs.push(runSb(() => sb.from('flashcards')
+            .update({ back: next.back }).eq('id', existing.id)));
+        }
+        const results = await Promise.all(jobs);
+        const failed = results.find((r) => r && r.error);
+        if (failed) {
+          // Best-effort: refetch cards so local state doesn't drift from the DB
+          // after a partial failure. Toast is deliberately quiet — the user
+          // was typing, not clicking "save", so a scary error banner would be
+          // more alarming than the actual problem.
+          console.warn('[cards] reconcile failed, resyncing', failed.error);
+          fetchCards();
+        }
       };
 
       const rateCard = async (id, rating) => {
@@ -2425,15 +2332,6 @@
         }
       };
 
-      const deleteCard = async (id) => {
-        let gone;
-        setCards((prev) => { gone = prev.find((c) => c.id === id); return prev.filter((c) => c.id !== id); });
-        const { error } = await runSb(() => sb.from('flashcards').delete().eq('id', id));
-        if (error) {
-          if (gone) setCards((prev) => [...prev, gone]);
-          notify('Failed to delete: ' + humaniseSbError(error), 'error');
-        }
-      };
       // -----------------------------------------------------------------
 
       const addProblem = async (data) => {
@@ -2461,7 +2359,6 @@
         if (data.startNote) {
           const note = await addNote({
             title: newProblem.name,
-            topic: newProblem.pattern,
             body: newProblem.notes || '',
             problem_id: newProblem.id,
           });
@@ -2587,11 +2484,9 @@
             <NotesView
               notes={notes} cards={cards} problems={problems} today={today}
               selectedId={selectedNoteId} onSelect={setSelectedNoteId}
-              onNewNote={() => addNote({ title: 'Untitled', topic: '', body: '' })}
+              onNewNote={() => addNote({ body: '' })}
               onSaveNote={saveNote} onDeleteNote={deleteNote}
-              onGenerateCards={generateCards}
-              onAddCard={addManualCard}
-              onRateCard={rateCard} onDeleteCard={deleteCard}
+              onRateCard={rateCard}
             />
           )}
           {view === 'add' && (
@@ -3596,12 +3491,16 @@
     }
 
     // ============================================================
-    // Notes — freeform notes, generated flashcards, per-note quiz
+    // Notes — a single markdown-ish textarea. Cards derive automatically
+    // from what the user types: each blank-line-separated block is one
+    // card, first line = prompt, rest = answer. No "Generate" button,
+    // no manual cards, no title/topic ceremony. If the note gets a bad
+    // card the user re-reads their own writing — the surface is the deck.
     // ============================================================
     function NotesView({
       notes, cards, problems, today,
       selectedId, onSelect, onNewNote, onSaveNote, onDeleteNote,
-      onGenerateCards, onAddCard, onRateCard, onDeleteCard,
+      onRateCard,
     }) {
       const selected = notes.find((n) => n.id === selectedId) || notes[0] || null;
       useEffect(() => {
@@ -3614,7 +3513,7 @@
       if (notes.length === 0) {
         return (
           <EmptyState icon={<IconNotes size={22} />} title="No notes yet"
-            body="Freeform notes on anything worth remembering — a pattern, a system-design tradeoff, a story you want ready. Generate flashcards from any note and they join your review queue."
+            body="Type what you want to remember. Blank line = new card. First line of each block is the question, the rest is the answer. Cards appear as you type — no button to press."
             cta="Write a note" ctaIcon={<IconPencil size={14} />} onCta={onNewNote} />
         );
       }
@@ -3637,10 +3536,10 @@
                     className="notes-item" data-active={selected && n.id === selected.id}>
                     <span className="notes-item-title">{n.title || 'Untitled'}</span>
                     <span className="notes-item-meta">
-                      <span className="mono" style={{ color: 'var(--accent)' }}>{n.topic || 'Unfiled'}</span>
-                      {total > 0 && (
-                        <span className={`pill ${due > 0 ? 'pill-accent' : ''}`} style={{ padding: '1px 6px', fontSize: 10 }}>
-                          {due > 0 ? `${due} due` : `${total} card${total === 1 ? '' : 's'}`}
+                      <span className="mono">{total === 0 ? 'empty' : `${total} card${total === 1 ? '' : 's'}`}</span>
+                      {due > 0 && (
+                        <span className="pill pill-accent" style={{ padding: '1px 6px', fontSize: 10 }}>
+                          {due} due
                         </span>
                       )}
                     </span>
@@ -3659,60 +3558,55 @@
               today={today}
               onSave={(patch) => onSaveNote(selected.id, patch)}
               onDelete={() => onDeleteNote(selected.id)}
-              onGenerate={() => onGenerateCards(selected.id)}
-              onAddCard={(fields) => onAddCard(selected.id, fields)}
               onRateCard={onRateCard}
-              onDeleteCard={onDeleteCard}
             />
           )}
         </div>
       );
     }
 
-    // The right pane. Owns its own draft state so typing in the editor never has to
-    // round-trip through the parent on every keystroke; a debounced effect writes
-    // back at ~600ms of quiet, matching the existing "silent save" pattern.
+    // The right pane. One textarea, one strip of status at the bottom, and a
+    // Review mode that replaces the editor with the quiz. Draft state lives
+    // here so typing never round-trips through the parent; a debounced effect
+    // writes back (which also triggers card reconciliation) at ~600ms of quiet.
     function NoteWorkspace({
       note, cards, problem, today,
-      onSave, onDelete, onGenerate, onAddCard, onRateCard, onDeleteCard,
+      onSave, onDelete, onRateCard,
     }) {
-      const [title, setTitle] = useState(note.title || '');
-      const [topic, setTopic] = useState(note.topic || '');
       const [body, setBody] = useState(note.body || '');
-      const [tab, setTab] = useState('write');
+      const [mode, setMode] = useState('edit');
       const [confirmDel, setConfirmDel] = useState(false);
       const [savedState, setSavedState] = useState('saved');
 
-      useEffect(() => { setTitle(note.title || ''); setTopic(note.topic || ''); setBody(note.body || ''); }, [note.id]);
+      useEffect(() => { setBody(note.body || ''); setMode('edit'); }, [note.id]);
 
       // Refs so the unmount cleanup can flush the latest pending edit without
       // relying on the closure of the mount effect (which sees only the first
       // render's values). NotesView keys this component on selected.id, so an
       // unmount here is either a note switch or leaving the tab — both need
       // any pending debounce to commit before it goes.
-      const draftRef = useRef({ title, topic, body });
+      const draftRef = useRef({ body });
       const dirtyRef = useRef(false);
       const saveRef = useRef(onSave);
       useEffect(() => { saveRef.current = onSave; }, [onSave]);
-      useEffect(() => { draftRef.current = { title, topic, body }; }, [title, topic, body]);
+      useEffect(() => { draftRef.current = { body }; }, [body]);
 
-      // Debounce persistence. If any of the three fields changes, wait for quiet
-      // and then commit. The saved-state indicator drives the "editing / saved"
-      // dot in the editor footer.
+      // Debounce persistence. Every save also reconciles cards on the parent
+      // side, so the "saved" indicator is also the "cards updated" indicator.
       useEffect(() => {
-        if (title === (note.title || '') && topic === (note.topic || '') && body === (note.body || '')) {
+        if (body === (note.body || '')) {
           dirtyRef.current = false;
           return;
         }
         dirtyRef.current = true;
         setSavedState('editing');
         const h = setTimeout(() => {
-          onSave({ title, topic, body });
+          onSave({ body });
           dirtyRef.current = false;
           setSavedState('saved');
         }, 600);
         return () => clearTimeout(h);
-      }, [title, topic, body]);
+      }, [body]);
 
       // Flush any pending debounce on real unmount so a fast note-switch (or
       // leaving the Notes tab) never drops the last <600ms of typing.
@@ -3721,180 +3615,96 @@
       }, []);
 
       const dueCards = cards.filter((c) => c.next_review <= today);
+      const displayTitle = (body.split('\n').map((l) => l.trim()).find((l) => l.length > 0) || 'Untitled').slice(0, 120);
 
       return (
         <section className="note-workspace">
           <header className="note-head">
-            <input value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="Untitled" className="note-title-input" />
-            <div className="note-sub">
-              <input value={topic} onChange={(e) => setTopic(e.target.value)}
-                placeholder="Topic (e.g. Sliding Window, System Design, Behavioral)"
-                className="note-topic-input mono" />
-              {problem && (
-                <span className="pill" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 600 }}>
-                  <IconLayers size={11} /> {problem.name}
-                </span>
-              )}
+            <div className="flex items-center gap-3" style={{ minHeight: 32 }}>
+              <div className="note-display-title" title={displayTitle}>{displayTitle}</div>
               <span className="mono" style={{ color: 'var(--faint)', fontSize: 11, marginLeft: 'auto' }}>
                 {savedState === 'saved' ? (
                   <><IconCheck size={11} /> saved</>
                 ) : (
-                  <>editing…</>
+                  <>saving…</>
                 )}
               </span>
             </div>
+            {problem && (
+              <div>
+                <span className="pill" style={{ background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 600 }}>
+                  <IconLayers size={11} /> {problem.name}
+                </span>
+              </div>
+            )}
           </header>
 
-          <div className="note-tabs" role="tablist">
-            {[
-              { k: 'write', label: 'Write', Icon: IconPencil },
-              { k: 'cards', label: 'Cards', Icon: IconLayers, count: cards.length },
-              { k: 'quiz',  label: 'Quiz',  Icon: IconBolt,   count: dueCards.length, badge: dueCards.length > 0 },
-            ].map((t) => (
-              <button key={t.k} onClick={() => setTab(t.k)} role="tab"
-                aria-selected={tab === t.k} className="note-tab" data-active={tab === t.k}>
-                <t.Icon size={13} />
-                {t.label}
-                {typeof t.count === 'number' && (
-                  <span className="note-tab-count" data-hot={t.badge}>{t.count}</span>
-                )}
-              </button>
-            ))}
-            <div style={{ marginLeft: 'auto' }}>
-              {confirmDel ? (
-                <span className="flex items-center gap-1.5">
-                  <button onClick={onDelete} className="btn btn-danger btn-sm">Delete note</button>
-                  <button onClick={() => setConfirmDel(false)} className="btn btn-ghost btn-sm">Cancel</button>
-                </span>
-              ) : (
-                <button onClick={() => setConfirmDel(true)} className="btn btn-quiet btn-sm">
-                  <IconTrash size={12} /> Delete
-                </button>
-              )}
-            </div>
-          </div>
-
-          {tab === 'write' && (
-            <NoteWritePanel body={body} setBody={setBody} onGenerate={onGenerate} />
-          )}
-          {tab === 'cards' && (
-            <NoteCardsPanel cards={cards} today={today}
-              onGenerate={onGenerate} onAddCard={onAddCard} onDeleteCard={onDeleteCard} />
-          )}
-          {tab === 'quiz' && (
-            <NoteQuizPanel cards={cards} dueCards={dueCards} onRate={onRateCard} />
+          {mode === 'edit' ? (
+            <NoteEditor body={body} setBody={setBody}
+              cards={cards} dueCards={dueCards}
+              onStartReview={() => setMode('review')}
+              confirmDel={confirmDel} setConfirmDel={setConfirmDel} onDelete={onDelete} />
+          ) : (
+            <NoteReview cards={cards} dueCards={dueCards}
+              onRate={onRateCard} onExit={() => setMode('edit')} />
           )}
         </section>
       );
     }
 
-    function NoteWritePanel({ body, setBody, onGenerate }) {
+    function NoteEditor({ body, setBody, cards, dueCards, onStartReview, confirmDel, setConfirmDel, onDelete }) {
       return (
         <div className="anim-fade">
           <textarea value={body} onChange={(e) => setBody(e.target.value)}
             className="note-body-editor"
-            placeholder="Jot the idea, the tradeoff, the number you keep forgetting. Paragraphs (blank line between them) each become a flashcard when you hit Generate." />
-          <div className="generate-cta">
-            <div>
-              <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 4 }}>Turn this note into a quiz</div>
-              <div className="display" style={{ fontSize: 22, lineHeight: 1.2 }}>Generate flashcards</div>
-              <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.55, margin: '6px 0 0', maxWidth: '46ch' }}>
-                Each paragraph becomes a card. Recall drops them into your review queue on the same 30 / 12 / 5 / 2 rhythm as your LeetCode problems.
-              </p>
+            placeholder={
+              "What's the invariant for binary search?\n" +
+              "Target always in [lo, hi] before each iteration.\n\n" +
+              "Time complexity of quicksort?\n" +
+              "O(n log n) average, O(n²) worst case with a bad pivot.\n\n" +
+              "First line = question. Rest = answer. Blank line starts the next card."
+            } />
+          <div className="note-footer">
+            <div className="note-footer-stats">
+              <span><strong className="tnum">{cards.length}</strong> card{cards.length === 1 ? '' : 's'}</span>
+              <span className="dot">·</span>
+              <span className={dueCards.length > 0 ? 'accent' : ''}>
+                <strong className="tnum">{dueCards.length}</strong> due today
+              </span>
             </div>
-            <button onClick={onGenerate} className="btn btn-primary">
-              <IconBolt size={14} /> Generate cards
-            </button>
+            <div className="flex items-center gap-2">
+              {confirmDel ? (
+                <>
+                  <button onClick={onDelete} className="btn btn-danger btn-sm">Delete note</button>
+                  <button onClick={() => setConfirmDel(false)} className="btn btn-ghost btn-sm">Cancel</button>
+                </>
+              ) : (
+                <button onClick={() => setConfirmDel(true)} className="btn btn-quiet btn-sm">
+                  <IconTrash size={12} /> Delete
+                </button>
+              )}
+              <button onClick={onStartReview} className="btn btn-primary btn-sm"
+                disabled={cards.length === 0}>
+                <IconBolt size={13} /> Review {dueCards.length > 0 ? `${dueCards.length} due` : 'all'}
+              </button>
+            </div>
           </div>
         </div>
       );
     }
 
-    function NoteCardsPanel({ cards, today, onGenerate, onAddCard, onDeleteCard }) {
-      const [showForm, setShowForm] = useState(false);
-      const [front, setFront] = useState('');
-      const [back, setBack] = useState('');
-      const canAdd = front.trim().length > 0 && back.trim().length > 0;
-
-      const dueCount = cards.filter((c) => c.next_review <= today).length;
-
+    function NoteReview({ cards, dueCards, onRate, onExit }) {
       return (
         <div className="anim-fade">
-          <div className="cards-summary">
-            <div className="stat-tile"><div className="k">Cards</div><div className="v tnum">{cards.length}</div></div>
-            <div className="stat-tile accent"><div className="k">Due today</div><div className="v tnum">{dueCount}</div></div>
-            <div className="stat-tile">
-              <div className="k">Sources</div>
-              <div className="v tnum" style={{ fontSize: 18, paddingTop: 6 }}>
-                {cards.filter((c) => c.source !== 'manual').length}g / {cards.filter((c) => c.source === 'manual').length}m
-              </div>
-            </div>
+          <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+            <button onClick={onExit} className="btn btn-quiet btn-sm">
+              ← Back to editor
+            </button>
+            <span className="mono" style={{ color: 'var(--muted)', fontSize: 11 }}>
+              Review mode
+            </span>
           </div>
-
-          {cards.length === 0 ? (
-            <div className="inset dashed" style={{ padding: 24, textAlign: 'center' }}>
-              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 14px' }}>
-                No cards yet. Write a note and hit Generate, or add one by hand.
-              </p>
-              <div className="flex items-center justify-center gap-2">
-                <button onClick={onGenerate} className="btn btn-primary btn-sm"><IconBolt size={12} /> Generate from note</button>
-                <button onClick={() => setShowForm(true)} className="btn btn-ghost btn-sm"><IconPlus size={12} /> Add manually</button>
-              </div>
-            </div>
-          ) : (
-            <div className="stack-3">
-              {cards.map((c, i) => (
-                <article key={c.id} className="card" style={{ padding: 18 }}>
-                  <div className="flex items-start justify-between gap-3" style={{ marginBottom: 10 }}>
-                    <div className="mono" style={{ fontSize: 10, color: 'var(--faint)', letterSpacing: '0.08em', paddingTop: 4 }}>
-                      {String(i + 1).padStart(2, '0')}
-                    </div>
-                    <div style={{ flex: 1, fontFamily: 'var(--font-display)', fontSize: 18, lineHeight: 1.3 }}>
-                      {c.front}
-                    </div>
-                    <button onClick={() => onDeleteCard(c.id)} className="icon-btn" aria-label="Delete card">
-                      <IconTrash size={13} />
-                    </button>
-                  </div>
-                  <div style={{ paddingTop: 10, borderTop: '1px dashed var(--border)', color: 'var(--text)', fontSize: 13.5, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                    {c.back}
-                  </div>
-                  {c.code && (
-                    <pre className="code" style={{ marginTop: 10 }}>{c.code}</pre>
-                  )}
-                  <div className="flex items-center gap-2" style={{ marginTop: 12, fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-                    <span className="pill" style={{ padding: '1px 7px', fontSize: 10 }}>{c.source}</span>
-                    <span>next {c.next_review}</span>
-                    {c.history && c.history.length > 0 && <span>· {c.history.length} review{c.history.length === 1 ? '' : 's'}</span>}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-
-          {showForm ? (
-            <div className="card" style={{ padding: 16, marginTop: 14 }}>
-              <div className="stack-3">
-                <Field label="Front (the prompt)" value={front} onChange={setFront}
-                  placeholder="A question to ask yourself." rows={2} inset />
-                <Field label="Back (what to recall)" value={back} onChange={setBack}
-                  placeholder="The answer, the tradeoff, the number." rows={4} inset />
-                <div className="flex gap-2">
-                  <button className="btn btn-primary btn-sm" disabled={!canAdd}
-                    onClick={async () => { await onAddCard({ front, back }); setFront(''); setBack(''); setShowForm(false); }}>
-                    <IconCheck size={13} /> Add card
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
-                </div>
-              </div>
-            </div>
-          ) : cards.length > 0 && (
-            <div className="flex items-center gap-2" style={{ marginTop: 14 }}>
-              <button onClick={onGenerate} className="btn btn-ghost btn-sm"><IconBolt size={12} /> Regenerate from note</button>
-              <button onClick={() => setShowForm(true)} className="btn btn-ghost btn-sm"><IconPlus size={12} /> Add card</button>
-            </div>
-          )}
+          <NoteQuizPanel cards={cards} dueCards={dueCards} onRate={onRate} />
         </div>
       );
     }
