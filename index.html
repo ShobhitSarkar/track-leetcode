@@ -1244,16 +1244,25 @@
     // browsers throw synchronously out of fetch(). Supabase-js doesn't catch them,
     // so without runSb they'd propagate as uncaught promise rejections.
     const NETWORK_ERR_RE = /failed to fetch|network|load failed|networkerror/i;
+    // GoTrue rejects a token whose iat is ahead of the auth server's clock with
+    // "token used before issued" — this fires when a browser tab wakes from sleep,
+    // a laptop's clock was adjusted, or the auth vs. API server clocks briefly
+    // drift. A short sleep plus a refreshSession() almost always clears it,
+    // because the new token is stamped with the auth server's current time.
+    const JWT_FUTURE_RE = /token used before issued|issued in the future|clock skew|iat is in the future/i;
     const isSchemaCacheError = (err) => !!err && SCHEMA_CACHE_RE.test(err.message || '');
     const isNetworkError = (err) => !!err && (err.name === 'TypeError' || NETWORK_ERR_RE.test(err.message || ''));
+    const isJwtFutureError = (err) => !!err && JWT_FUTURE_RE.test(err.message || '');
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     // Every Supabase call goes through this. It never throws — a thrown error
     // (network drop, aborted fetch, undefined return) is caught and reshaped into
     // the standard `{ data, error }` result so callers can always destructure.
-    // Retries once with a small delay for two transient classes: PostgREST schema
-    // cache misses right after a migration, and network TypeErrors that clear
-    // once the connection recovers.
+    // Retries once with a small delay for three transient classes: PostgREST
+    // schema cache misses right after a migration, network TypeErrors that clear
+    // once the connection recovers, and "token used before issued" JWT errors
+    // that clear once the auth server's clock catches up (a forced session
+    // refresh usually gives us a token stamped with the current server time).
     const runSb = async (fn) => {
       const attempt = async () => {
         try {
@@ -1267,8 +1276,11 @@
         }
       };
       let result = await attempt();
-      const transient = isSchemaCacheError(result.error) || isNetworkError(result.error);
-      if (transient) {
+      if (isJwtFutureError(result.error)) {
+        await sleep(1500);
+        try { await sb.auth.refreshSession(); } catch (_) { /* refresh failure falls through to retry */ }
+        result = await attempt();
+      } else if (isSchemaCacheError(result.error) || isNetworkError(result.error)) {
         await sleep(900);
         result = await attempt();
       }
@@ -1280,6 +1292,9 @@
       }
       if (isNetworkError(err)) {
         return "Network error — the request couldn't reach Supabase. Check your connection and try again.";
+      }
+      if (isJwtFutureError(err)) {
+        return "Your session token was rejected as clock-skewed. Give it a few seconds and try again — reload the page if it keeps happening.";
       }
       return err.message || String(err);
     };
@@ -2074,6 +2089,11 @@
       const [error, setError] = useState(null);
       const [menuOpen, setMenuOpen] = useState(false);
       const [scrolled, setScrolled] = useState(false);
+      // Cached LLM-generated suggestions for the Discover view. `state` is
+      // 'idle' | 'loading' | 'ready' | 'error'; `picks` is the last successful
+      // batch. We cache so switching tabs doesn't re-hit the model on every
+      // visit, but the user can force a fresh batch with the Refresh button.
+      const [aiSuggest, setAiSuggest] = useState({ state: 'idle', picks: [] });
       const menuRef = useRef(null);
       const { toasts, notify, dismiss } = useToasts();
 
@@ -2147,6 +2167,77 @@
           sb.from('skipped_suggestions').delete().eq('user_id', user.id));
         if (error) { setSkips(prev); notify('Failed to reset: ' + humaniseSbError(error), 'error'); }
         else notify(`Restored ${prev.size} skipped ${prev.size === 1 ? 'suggestion' : 'suggestions'}`, 'success');
+      };
+
+      // Compact snapshot the LLM needs to recommend well without us shipping the
+      // whole problems table upstream. Mirrors the signal the deterministic
+      // engine already computes (pattern stats, difficulty comfort), plus the
+      // recent-solves list and the block lists (solved + skipped) so the model
+      // doesn't hand back things the user has already seen.
+      const buildSuggestionSnapshot = () => {
+        const { patternStats, difficultyCleared } = analyseHistory(PROBLEM_CATALOG, problems);
+        const totalCleared = difficultyCleared.Easy + difficultyCleared.Medium + difficultyCleared.Hard;
+        const comfort = totalCleared === 0
+          ? 'Easy'
+          : difficultyCleared.Hard >= 3 ? 'Hard'
+          : difficultyCleared.Medium >= 3 ? 'Medium'
+          : 'Easy';
+        const statsArr = [...patternStats.entries()].map(([pattern, s]) => ({
+          pattern, count: s.count, avgRating: s.avgRating,
+          strongCount: s.strongCount, struggling: s.struggling,
+        }));
+        // Recent-first, deduped by name.
+        const recentNames = [];
+        const seenRecent = new Set();
+        const sorted = [...problems].sort((a, b) => {
+          const ad = (a.history && a.history[a.history.length - 1] && a.history[a.history.length - 1].date) || a.created_at || '';
+          const bd = (b.history && b.history[b.history.length - 1] && b.history[b.history.length - 1].date) || b.created_at || '';
+          return bd.localeCompare(ad);
+        });
+        for (const p of sorted) {
+          if (recentNames.length >= 15) break;
+          if (seenRecent.has(p.name)) continue;
+          seenRecent.add(p.name);
+          recentNames.push(p.name);
+        }
+        const solvedNames = problems.map((p) => p.name);
+        // Send skipped as names when we can (looking up the catalog by slug),
+        // otherwise the slug itself — either way the server slug-normalises
+        // before blocking so the model can't hand a skipped item back.
+        const bySlug = new Map(PROBLEM_CATALOG.map((c) => [slugify(c.name), c.name]));
+        const skippedNames = [...skips.keys()].map((slug) => bySlug.get(slug) || slug);
+        return {
+          solved: solvedNames,
+          skipped: skippedNames,
+          recent: recentNames,
+          patternStats: statsArr,
+          comfort,
+          count: 5,
+        };
+      };
+
+      // Loads a fresh batch of LLM picks and stashes them in state. `force`
+      // means the user asked for a refresh (button press) — we invalidate the
+      // cache; otherwise we skip if we already have a batch on hand.
+      const loadAiSuggestions = async ({ force = false } = {}) => {
+        if (!force && aiSuggest.state === 'ready') return;
+        if (aiSuggest.state === 'loading') return;
+        setAiSuggest((s) => ({ state: 'loading', picks: force ? [] : s.picks }));
+        const snapshot = buildSuggestionSnapshot();
+        const picks = await requestAiSuggestions(snapshot);
+        if (picks && picks.length > 0) {
+          // Belt-and-braces: filter out anything the user has already logged or
+          // actively skipped, in case the model ignored the block list.
+          const solvedSlugs = new Set(problems.map((p) => slugify(p.name)));
+          const activeSkips = activeSkipSlugs(PROBLEM_CATALOG, problems, skips);
+          const filtered = picks.filter((p) => {
+            const slug = slugify(p.name);
+            return !solvedSlugs.has(slug) && !activeSkips.has(slug);
+          });
+          setAiSuggest({ state: 'ready', picks: filtered });
+        } else {
+          setAiSuggest({ state: 'error', picks: [] });
+        }
       };
 
       // ---- Notes and flashcards ----------------------------------------
@@ -2290,6 +2381,54 @@
         });
       };
 
+      // Shared helper: POST JSON to a Supabase Edge Function, retrying once with
+      // a session refresh when the JWT is rejected as clock-skewed (see the
+      // isJwtFutureError note in runSb — the same class of failure hits the
+      // Edge Function gateway too, which returns 401 with a body like
+      // "token used before issued"). Callers get null on any failure so the
+      // UI can fall back gracefully instead of surfacing OpenAI internals.
+      const callEdgeFunction = async (path, body, timeoutMs = 30000) => {
+        const doPost = async () => {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+          try {
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) return { resp: null, text: '' };
+            const resp = await fetch(`${SUPABASE_URL}/functions/v1/${path}`, {
+              method: 'POST',
+              signal: ctrl.signal,
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify(body),
+            });
+            const text = await resp.text().catch(() => '');
+            return { resp, text };
+          } finally {
+            clearTimeout(timer);
+          }
+        };
+        try {
+          let { resp, text } = await doPost();
+          if (resp && !resp.ok && (resp.status === 401 || resp.status === 403) && JWT_FUTURE_RE.test(text)) {
+            await sleep(1500);
+            try { await sb.auth.refreshSession(); } catch (_) { /* retry with whatever token we have */ }
+            ({ resp, text } = await doPost());
+          }
+          if (!resp) return null;
+          if (!resp.ok) {
+            console.warn(`[${path}] failed`, resp.status, text.slice(0, 200));
+            return null;
+          }
+          try { return JSON.parse(text); } catch (_) { return null; }
+        } catch (e) {
+          console.warn(`[${path}] request threw`, e);
+          return null;
+        }
+      };
+
       // Ask the generate-cards Edge Function to produce flashcards with OpenAI.
       // Returns an array of {front, back, code?} on success, or null on any
       // failure so the caller can fall back to the client-side heuristic.
@@ -2297,54 +2436,51 @@
       // fallback path — the app should keep working with the heuristic even
       // before the function is set up.
       const requestAiCards = async (note) => {
-        // Guard against a hung upstream — the client walks away after 30s and
-        // the heuristic fires instead, so the Generate button never leaves the
-        // user staring at a spinner longer than that.
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 30000);
-        try {
-          const { data: { session } } = await sb.auth.getSession();
-          if (!session) return null;
-          const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-cards`, {
-            method: 'POST',
-            signal: ctrl.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
-              title: note.title || '',
-              topic: note.topic || '',
-              body: note.body || '',
-            }),
-          });
-          if (!resp.ok) {
-            const body = await resp.text().catch(() => '');
-            console.warn('[generate-cards] failed', resp.status, body.slice(0, 200));
-            return null;
-          }
-          const data = await resp.json();
-          const arr = Array.isArray(data?.cards) ? data.cards : null;
-          if (!arr || arr.length === 0) return null;
-          const cleaned = arr
-            .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
-            .map((c) => ({
-              front: c.front.trim(),
-              back: c.back.trim(),
-              code: (typeof c.code === 'string' && c.code.trim()) ? c.code : null,
-            }))
-            // Server-side validation catches this too, but a bad row here would
-            // hit a `not null` DB constraint and toast a generic save failure,
-            // which is much noisier than falling back to the heuristic.
-            .filter((c) => c.front.length > 0 && c.back.length > 0);
-          return cleaned.length > 0 ? cleaned : null;
-        } catch (e) {
-          console.warn('[generate-cards] request threw', e);
-          return null;
-        } finally {
-          clearTimeout(timer);
-        }
+        const data = await callEdgeFunction('generate-cards', {
+          title: note.title || '',
+          topic: note.topic || '',
+          body: note.body || '',
+        });
+        const arr = Array.isArray(data?.cards) ? data.cards : null;
+        if (!arr || arr.length === 0) return null;
+        const cleaned = arr
+          .filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
+          .map((c) => ({
+            front: c.front.trim(),
+            back: c.back.trim(),
+            code: (typeof c.code === 'string' && c.code.trim()) ? c.code : null,
+          }))
+          // Server-side validation catches this too, but a bad row here would
+          // hit a `not null` DB constraint and toast a generic save failure,
+          // which is much noisier than falling back to the heuristic.
+          .filter((c) => c.front.length > 0 && c.back.length > 0);
+        return cleaned.length > 0 ? cleaned : null;
+      };
+
+      // Ask the suggest-problems Edge Function for LLM-generated fresh picks.
+      // Sends a compact user snapshot (patterns practiced, comfort, recent /
+      // logged / skipped names) so the model can propose something the built-in
+      // catalog doesn't already know about. Returns an array of picks shaped
+      // like the catalog rows (plus a `reason` and `source:'ai'` marker) or
+      // null on any failure — Discover falls back to the deterministic engine.
+      const requestAiSuggestions = async (snapshot) => {
+        const data = await callEdgeFunction('suggest-problems', snapshot, 30000);
+        const arr = Array.isArray(data?.picks) ? data.picks : null;
+        if (!arr || arr.length === 0) return null;
+        const okDiff = new Set(['Easy', 'Medium', 'Hard']);
+        const cleaned = arr
+          .filter((p) => p && typeof p.name === 'string' && p.name.trim().length > 0)
+          .map((p) => ({
+            name: p.name.trim(),
+            difficulty: okDiff.has(p.difficulty) ? p.difficulty : 'Medium',
+            patterns: Array.isArray(p.patterns)
+              ? p.patterns.filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim()).slice(0, 3)
+              : [],
+            reason: typeof p.reason === 'string' ? p.reason.trim() : '',
+            frequency: 2,
+            source: 'ai',
+          }));
+        return cleaned.length > 0 ? cleaned : null;
       };
 
       const cardRowFromFields = (noteId, { front, back, code }, source) => {
@@ -2581,6 +2717,8 @@
           )}
           {view === 'discover' && (
             <DiscoverView problems={problems} skips={skips}
+              aiSuggest={aiSuggest}
+              onLoadAi={loadAiSuggestions}
               onLog={startLogging} onSkip={skipSuggestion} onResetSkips={resetSkips} />
           )}
           {view === 'notes' && (
@@ -3064,21 +3202,24 @@
     // The main recommender. Returns an ordered list of sections, each with a title,
     // subtitle and a small (2-3) list of picks. Every pick carries a `reason` string
     // built from the actual signal that surfaced it.
-    // Auto-unskip: a skip is stale once the user has picked up one of the problem's
-    // patterns *after* the skip was recorded. Rationale — you skipped a Greedy problem
-    // because you weren't doing Greedy; a Greedy solve later means that problem is a
-    // legitimate recommendation again. Returns the slugs that are still actively
-    // hiding a suggestion right now.
+    // Auto-unskip: a skip is stale once the user has *added a new problem* in one of
+    // the skipped item's patterns after the skip was recorded. The earlier version
+    // used the last review date on any existing problem, which fired on ordinary
+    // spaced-repetition reviews and made skips feel like they weren't sticking —
+    // "I keep seeing the same suggestions". Adding a new problem is a clean signal
+    // that the user is genuinely working that pattern again; reviewing an existing
+    // one is just the schedule doing its job. Returns the slugs that are still
+    // actively hiding a suggestion right now.
     function activeSkipSlugs(catalog, userProblems, skips) {
       if (!skips || skips.size === 0) return new Set();
-      const patternLatestSolve = new Map();
+      const patternLatestAdd = new Map();
       for (const p of userProblems) {
         const pattern = (p.pattern || '').trim();
         if (!pattern) continue;
-        const latest = p.history && p.history[p.history.length - 1] && p.history[p.history.length - 1].date;
-        if (!latest) continue;
-        const prev = patternLatestSolve.get(pattern);
-        if (!prev || latest > prev) patternLatestSolve.set(pattern, latest);
+        const added = p.created_at;
+        if (!added) continue;
+        const prev = patternLatestAdd.get(pattern);
+        if (!prev || added > prev) patternLatestAdd.set(pattern, added);
       }
       const active = new Set();
       for (const c of catalog) {
@@ -3088,7 +3229,7 @@
         const skipDate = String(skippedAt).slice(0, 10);
         let stale = false;
         for (const pat of c.patterns) {
-          const latest = patternLatestSolve.get(pat);
+          const latest = patternLatestAdd.get(pat);
           if (latest && latest > skipDate) { stale = true; break; }
         }
         if (!stale) active.add(slug);
@@ -3288,6 +3429,7 @@
 
     function SuggestionCard({ prob, onLog, onSkip, index }) {
       const href = leetcodeUrlFor(prob.name);
+      const isAi = prob.source === 'ai';
       return (
         <div className="card anim-rise" style={{ padding: 16, animationDelay: `${Math.min(index, 8) * 30}ms` }}>
           <div className="flex items-start justify-between gap-3" style={{ marginBottom: 10 }}>
@@ -3300,7 +3442,13 @@
             {prob.patterns.map((pat) => (
               <span key={pat} className="pill" style={{ fontSize: 10.5 }}>{pat}</span>
             ))}
-            {prob.frequency === 3 && (
+            {isAi && (
+              <span className="pill pill-accent" style={{ fontSize: 10.5 }}
+                title="Suggested by the AI coach based on your history">
+                <IconSparkle size={9} /> AI pick
+              </span>
+            )}
+            {!isAi && prob.frequency === 3 && (
               <span className="pill pill-accent" style={{ fontSize: 10.5 }}>
                 <IconSparkle size={9} /> {frequencyLabel(prob.frequency)}
               </span>
@@ -3334,7 +3482,7 @@
       );
     }
 
-    function DiscoverView({ problems, skips, onLog, onSkip, onResetSkips }) {
+    function DiscoverView({ problems, skips, aiSuggest, onLoadAi, onLog, onSkip, onResetSkips }) {
       const sections = useMemo(
         () => personalisedPicks(PROBLEM_CATALOG, problems, skips),
         [problems, skips]
@@ -3347,7 +3495,23 @@
       );
       const revivedCount = (skips ? skips.size : 0) - activeSkipCount;
 
-      if (sections.length === 0) {
+      // First visit to Discover with anything logged: try to pull an LLM batch
+      // so the "Fresh from AI" section is there when the view first paints,
+      // instead of forcing the user to hunt for a button. Cold-start users
+      // (nothing logged yet) skip this — the deterministic "Start here"
+      // section is the right first impression there.
+      useEffect(() => {
+        if (aiSuggest.state === 'idle' && problems.length > 0) {
+          onLoadAi();
+        }
+      }, [aiSuggest.state, problems.length, onLoadAi]);
+
+      const aiPicks = aiSuggest.state === 'ready' ? aiSuggest.picks : [];
+      const aiSection = (aiPicks.length > 0 || aiSuggest.state === 'loading' || aiSuggest.state === 'error')
+        ? { key: 'ai' }
+        : null;
+
+      if (!aiSection && sections.length === 0) {
         return (
           <div className="stack-3 anim-rise">
             <EmptyState icon={<IconCompass size={22} />} title="No suggestions right now"
@@ -3365,8 +3529,50 @@
         );
       }
 
+      const renderAiSection = () => (
+        <section key="ai" className="anim-rise">
+          <div style={{ marginBottom: 14 }}>
+            <div className="flex items-center justify-between gap-3" style={{ marginBottom: 6 }}>
+              <div className="eyebrow">Fresh from AI</div>
+              <button onClick={() => onLoadAi({ force: true })}
+                className="btn btn-ghost btn-sm"
+                disabled={aiSuggest.state === 'loading'}
+                title="Ask the model for a new batch">
+                <IconSparkle size={11} />
+                {aiSuggest.state === 'loading' ? 'Thinking…' : 'Refresh'}
+              </button>
+            </div>
+            <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.55, maxWidth: 560 }}>
+              Picks drawn from the whole LeetCode catalog by an LLM using your history — a bigger pool than the built-in list, so it stays fresh even after you've cleared it.
+            </div>
+          </div>
+          {aiSuggest.state === 'loading' && aiPicks.length === 0 && (
+            <div className="card" style={{ padding: 16, color: 'var(--muted)', fontSize: 13 }}>
+              <span className="breathe">Asking the coach for fresh picks…</span>
+            </div>
+          )}
+          {aiSuggest.state === 'error' && (
+            <div className="card" style={{ padding: 14, color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.55 }}>
+              Couldn't reach the AI coach right now — the picks below are from the built-in engine.
+              {' '}
+              <button onClick={() => onLoadAi({ force: true })} className="link" style={{ background: 'none', border: 'none', padding: 0 }}>
+                Try again
+              </button>
+            </div>
+          )}
+          {aiPicks.length > 0 && (
+            <div className="grid-review">
+              {aiPicks.map((pick, i) => (
+                <SuggestionCard key={`ai-${pick.name}`} prob={pick} onLog={onLog} onSkip={onSkip} index={i} />
+              ))}
+            </div>
+          )}
+        </section>
+      );
+
       return (
         <div className="anim-rise" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+          {aiSection && renderAiSection()}
           {sections.map((section, si) => (
             <section key={section.key} style={{ animationDelay: `${si * 60}ms` }} className="anim-rise">
               <div style={{ marginBottom: 14 }}>
