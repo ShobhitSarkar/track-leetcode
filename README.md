@@ -43,6 +43,10 @@ Notes feature — it adds `notes` and `flashcards` (with RLS and indexes). Witho
 the Notes tab loads empty and any card action fails silently; the existing four tabs
 keep working. See the **Notes** section below for the full flow.
 
+**Drills need one more table.** Re-run `schema.sql` after pulling the Drills feature. It
+adds `drills` (with RLS and an index). Without it the Drills tab loads empty and starting a
+drill fails with a save error; everything else keeps working. See **Drills** below.
+
 **After running any migration, reload PostgREST's schema cache.** Supabase's API layer
 (PostgREST) keeps its own schema cache; a fresh table or column returns
 `Could not find the … in the schema cache` until it reloads. The app auto-retries once
@@ -147,6 +151,8 @@ Everything's in `index.html`:
 - `RATING_LABELS` — rename the ratings
 - `COMMON_PATTERNS` — pattern chips shown when adding
 - `leetcodeUrlFor` — how a problem link is guessed from the name
+- `DRILL_KINDS` — drill types, time targets and focus chips
+- `SYSTEM_DESIGN_CATALOG` — the built-in system design prompts and their key points
 
 The look lives in the `<style>` block in the `<head>`. Colors, radii, shadows and easing
 are CSS custom properties on `:root` (light) and `:root[data-theme="dark"]` (dark), so
@@ -248,6 +254,61 @@ well under a cent. Bigger models are trivial to swap via `OPENAI_MODEL`.
 The rail's due-count on **Today** now also flags flashcards: if any cards are due,
 a small "N flashcards due" pill sits below the problem count and jumps to Notes so
 one morning session covers both queues.
+
+## Drills
+
+The Drills tab is interview practice that isn't about recall: PR reviews, debugging
+tickets and system design rounds. Every drill is new, generated fresh by a larger model
+(or picked from the built-in system design catalog), so you practise getting up to speed
+on something unfamiliar. There's no review schedule. Each attempt goes into **History**
+with its score, active time and feedback. All code is Python.
+
+- **PR review** (~20 min): a realistic diff from a small codebase, with 3–7 planted issues
+  (bugs, security, concurrency, performance, missing tests…). Click any line to comment,
+  pick Approve / Comment / Request changes, and write a summary. Grading marks each planted
+  issue as caught, partly caught or missed, and labels each of your comments as matching an
+  issue, a valid extra, or noise.
+- **Debugging** (~25 min): a bug report, sometimes a traceback, and 1–3 source files with
+  one root cause and a red herring or two. You write where the bug is, the root cause, the
+  fix, and how you'd verify it. Grading compares your answer to the hidden root cause,
+  then highlights the buggy line and reveals the full answer key.
+- **System design** (~45 min): a prompt from the catalog of 16 classics, which are
+  graded against hand-written key points, or **Surprise me** for an AI-written question.
+  You work through requirements, estimates, API, data model, high-level design, a deep
+  dive and tradeoffs. Scale numbers stay hidden until you **Ask about scale**. When you're
+  done, an AI interviewer asks three follow-ups about your specific design before grading.
+
+Grades come with a 0–100 score, a hire/no-hire verdict, 1–4 scores per rubric dimension,
+strengths, and things to do differently. History shows your **weakest areas** across
+attempts. **Save lessons to Notes** turns a graded drill's feedback and misses into a
+note, and Generate cards turns that note into flashcards. So the drill itself is never
+scheduled, but what you learned from it can be.
+
+The clock only runs while the drill is open and the tab is visible. Drafts autosave as you
+type, so you can close a drill halfway and resume it from **Pick up where you left off**.
+If grading fails or times out, the attempt stays submitted, the answer key is revealed so
+you can check your own work, and **Retry grading** tries again.
+
+### The `drills` Edge Function
+
+`supabase/functions/drills` handles three actions: `generate`, `followups` and `grade`.
+Each exercise stores its own answer key on the attempt row and is sent back at grading
+time, so the function is stateless. (The key sits in your own browser's data. That's
+fine for a personal tool, but it isn't secret from you if you open devtools.)
+
+```bash
+supabase secrets set OPENAI_API_KEY=sk-...           # already set if Notes/Discover work
+supabase secrets set DRILLS_MODEL=gpt-5.6-sol         # optional, this is the default
+supabase secrets set DRILLS_REASONING_EFFORT=medium   # optional, not sent unless set
+supabase functions deploy drills                      # CI does this on merge to main
+```
+
+`DRILLS_MODEL` is separate from `OPENAI_MODEL` on purpose. Flashcards and suggestions are
+cheap calls a small model handles fine. Drills need a model that can write a believable
+buggy codebase and grade a design doc. The default is the previous-generation OpenAI
+flagship (GPT-5.6 Sol); set the secret to move up or down. Generation usually takes one to
+two minutes. The function stops waiting at 140s so it stays under Supabase's 150s
+Edge Function limit.
 
 ## Flashcards on problems
 
