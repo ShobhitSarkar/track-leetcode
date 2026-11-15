@@ -165,3 +165,53 @@ create policy "update own flashcards" on public.flashcards
 drop policy if exists "delete own flashcards" on public.flashcards;
 create policy "delete own flashcards" on public.flashcards
   for delete using (auth.uid() = user_id);
+
+-- Table: one row per whiteboard-style drill attempt (PR review, debugging,
+-- system design). Unlike problems and flashcards there is no spaced-repetition
+-- schedule here: the point of a drill is meeting an unfamiliar problem cold, so
+-- each attempt is a fresh, AI-generated exercise and the table is a history log.
+--
+--   exercise   what the user was shown, including the hidden answer key
+--              (planted PR issues, the real root cause, system-design key points).
+--              The UI keeps the key out of sight until the attempt is graded.
+--   response   what the user produced (line comments, root cause + fix, phase write-ups)
+--   followups  system design only: interviewer follow-up questions and the answers
+--   grade      the AI grader's verdict: score, per-dimension scores, feedback
+--   score      0-100, copied out of `grade` so the history list can sort and average
+--   status     in_progress -> submitted -> graded
+create table if not exists public.drills (
+  id            text primary key,
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  kind          text not null check (kind in ('pr_review', 'debugging', 'system_design')),
+  title         text not null,
+  topic         text,
+  difficulty    text,
+  exercise      jsonb not null,
+  response      jsonb not null default '{}'::jsonb,
+  followups     jsonb,
+  grade         jsonb,
+  score         int,
+  status        text not null default 'in_progress'
+                  check (status in ('in_progress', 'submitted', 'graded')),
+  duration_sec  int not null default 0,
+  submitted_at  timestamptz,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists drills_user_created_idx
+  on public.drills (user_id, created_at desc);
+
+alter table public.drills enable row level security;
+
+drop policy if exists "read own drills" on public.drills;
+create policy "read own drills" on public.drills
+  for select using (auth.uid() = user_id);
+drop policy if exists "insert own drills" on public.drills;
+create policy "insert own drills" on public.drills
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "update own drills" on public.drills;
+create policy "update own drills" on public.drills
+  for update using (auth.uid() = user_id);
+drop policy if exists "delete own drills" on public.drills;
+create policy "delete own drills" on public.drills
+  for delete using (auth.uid() = user_id);

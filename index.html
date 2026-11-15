@@ -1206,6 +1206,199 @@
     .start-note-sub {
       font-size: 11.5px; line-height: 1.5; color: var(--muted);
     }
+
+    /* ==========================================================================
+       Drills — PR review, debugging, system design
+       ========================================================================== */
+    .drill-kinds {
+      display: grid; gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @container (max-width: 720px) {
+      .drill-kinds { grid-template-columns: 1fr; }
+    }
+    .drill-kind {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+      text-align: left; padding: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+      transition: border-color 130ms, background 130ms, transform 130ms var(--ease-out);
+    }
+    .drill-kind:hover { border-color: var(--border-strong); }
+    .drill-kind:active { transform: scale(0.99); }
+    .drill-kind[data-active="true"] {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-soft), var(--shadow-sm);
+      background: var(--surface-2);
+    }
+    .drill-kind-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 999px;
+      background: var(--tabs-bg); color: var(--muted); margin-bottom: 4px;
+    }
+    .drill-kind[data-active="true"] .drill-kind-icon { background: var(--primary-soft); color: var(--primary); }
+    .drill-kind-title { font-family: var(--font-display); font-size: 22px; line-height: 1.15; }
+    .drill-kind-blurb { font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+    .drill-kind-meta { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--faint); margin-top: 2px; }
+
+    .sd-catalog {
+      display: grid; gap: 6px;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    }
+    .sd-pick {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+      text-align: left; padding: 10px 12px;
+      background: var(--inset); border: 1px solid transparent; border-radius: var(--r-md);
+      transition: border-color 130ms, background 130ms;
+    }
+    .sd-pick:hover { border-color: var(--border-strong); }
+    .sd-pick[data-active="true"] { background: var(--surface-2); border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+    .sd-pick-title { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-transform: capitalize; }
+    .sd-pick-tags { font-size: 11px; color: var(--muted); }
+
+    .drill-generating {
+      display: flex; align-items: center; gap: 18px; padding: 24px;
+    }
+    .drill-spinner {
+      flex: none; width: 52px; height: 52px; border-radius: 999px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary); background: var(--primary-soft);
+      animation: soft-pulse 1.6s ease-in-out infinite;
+    }
+
+    .drill-resume, .drill-row {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 10px 12px; border-radius: var(--r-md);
+      background: transparent; border: 1px solid transparent;
+      font-size: 13.5px; transition: background 130ms, border-color 130ms;
+    }
+    .drill-resume:hover, .drill-row:hover { background: var(--hover); }
+    .drill-row { background: var(--surface); border-color: var(--border); padding: 12px 14px; }
+    .drill-row:hover { border-color: var(--border-strong); background: var(--surface-2); }
+    .drill-row-icon {
+      flex: none; width: 30px; height: 30px; border-radius: 999px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--tabs-bg); color: var(--muted);
+    }
+    .drill-row-title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .drill-row-meta { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    [data-tone="good"] { --tone: var(--success); --tone-soft: var(--success-soft); }
+    [data-tone="mid"] { --tone: var(--accent); --tone-soft: var(--accent-soft); }
+    [data-tone="low"] { --tone: var(--danger); --tone-soft: var(--danger-soft); }
+    [data-tone="info"] { --tone: var(--primary); --tone-soft: var(--primary-soft); }
+    .pill[data-tone] { background: var(--tone-soft); color: var(--tone); font-weight: 600; }
+    .score-badge {
+      flex: none; min-width: 40px; text-align: center;
+      font-family: var(--font-display); font-size: 22px; line-height: 1;
+      padding: 6px 8px; border-radius: var(--r-md);
+      background: var(--tone-soft); color: var(--tone);
+    }
+
+    .dim-row { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 40px; align-items: center; gap: 12px; }
+    .dim-name { font-size: 12.5px; color: var(--text); }
+    .dim-track { height: 6px; background: var(--inset); border-radius: 999px; overflow: hidden; }
+    .dim-fill { height: 100%; border-radius: 999px; background: var(--tone); transition: width 400ms var(--ease-out); }
+    .dim-val { font-size: 11px; color: var(--muted); text-align: right; }
+    .dim-comment { font-size: 12.5px; line-height: 1.55; color: var(--muted); margin-top: 4px; }
+    @container (min-width: 640px) { .dim-comment { padding-left: calc(34% + 12px); } }
+
+    .drill-workspace { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .drill-title { font-size: 34px; line-height: 1.15; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+    .drill-actionbar {
+      position: sticky; bottom: 12px; z-index: 5;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 12px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+    }
+    .drill-clock { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
+    .drill-clock[data-over="true"] { color: var(--accent); }
+
+    .grade-card { padding: 22px; }
+    .grade-top { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+    .grade-score { display: flex; align-items: baseline; gap: 6px; color: var(--tone); }
+    .grade-score .display { font-size: 64px; line-height: 0.9; letter-spacing: -0.03em; }
+    .grade-score .mono { font-size: 12px; color: var(--muted); }
+    .verdict-pill { font-size: 12px; padding: 3px 10px; }
+    .grade-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 22px; }
+    .grade-ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.6; }
+    .grade-ul li + li { margin-top: 6px; }
+
+    .readonly-block {
+      font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+      padding: 10px 12px; background: var(--inset); border-radius: var(--r-md);
+    }
+    .readonly-block.mono { font-family: var(--font-mono); font-size: 12.5px; }
+    .answer-key { border-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), var(--surface) 140px); }
+    .followups { border-color: var(--primary); }
+
+    .sd-progress {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 10.5px;
+      position: sticky; top: 76px; z-index: 4;
+      padding: 8px 10px; border-radius: var(--r-md);
+      background: var(--header-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+    }
+    @media (min-width: 1024px) { .sd-progress { top: 12px; } }
+    .sd-progress-dot {
+      padding: 3px 8px; border-radius: 999px; text-decoration: none;
+      color: var(--muted); background: var(--tabs-bg);
+    }
+    .sd-progress-dot[data-done="true"] { background: var(--success-soft); color: var(--success); }
+
+    /* Diff + code viewer. Lines wrap instead of scrolling sideways, so a
+       comment box under a line is always fully visible on a phone. */
+    .diff-file {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-sm);
+    }
+    .diff-file-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; font-size: 12px; font-weight: 600;
+      background: var(--inset); border-bottom: 1px solid var(--border);
+    }
+    .diff-body { font-family: var(--font-mono); font-size: 12px; line-height: 1.6; }
+    .diff-row {
+      display: grid; grid-template-columns: 40px 40px 16px minmax(0, 1fr);
+      align-items: start;
+    }
+    .diff-row.code-row { grid-template-columns: 44px minmax(0, 1fr); }
+    .diff-row[data-clickable="true"] { cursor: pointer; }
+    .diff-row[data-clickable="true"]:hover { background: var(--primary-soft); }
+    .diff-row[data-t="add"] { background: var(--success-soft); }
+    .diff-row[data-t="del"] { background: var(--danger-soft); }
+    .diff-row[data-t="hit"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+    .diff-num {
+      text-align: right; padding: 0 8px 0 4px; color: var(--faint);
+      user-select: none; font-size: 11px; line-height: 19.2px;
+    }
+    .diff-sign { color: var(--muted); user-select: none; text-align: center; }
+    .diff-row[data-t="add"] .diff-sign { color: var(--success); }
+    .diff-row[data-t="del"] .diff-sign { color: var(--danger); }
+    .diff-code { white-space: pre-wrap; word-break: break-word; padding-right: 12px; font-family: inherit; }
+    .diff-fold {
+      display: block; width: 100%; text-align: left;
+      padding: 4px 14px 4px 96px; font-size: 11px; color: var(--primary);
+      background: var(--primary-soft); border: none; border-block: 1px solid var(--border);
+    }
+    .diff-fold:hover { text-decoration: underline; }
+    .diff-inline { padding: 8px 12px 8px 96px; background: var(--surface); border-block: 1px solid var(--border); font-family: var(--font-sans); }
+    @container (max-width: 560px) {
+      .diff-row { grid-template-columns: 30px 30px 12px minmax(0, 1fr); }
+      .diff-inline, .diff-fold { padding-left: 12px; }
+    }
+    .diff-comment { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 10px 12px; }
+    .issue-callout {
+      --tone: var(--muted); --tone-soft: var(--inset);
+      border: 1px solid var(--tone); background: var(--tone-soft); color: var(--tone);
+      border-radius: var(--r-md); padding: 10px 12px;
+    }
+    .issue-callout[data-tone="good"] { --tone: var(--success); --tone-soft: var(--success-soft); }
+    .issue-callout[data-tone="mid"] { --tone: var(--accent); --tone-soft: var(--accent-soft); }
+    .issue-callout[data-tone="low"] { --tone: var(--danger); --tone-soft: var(--danger-soft); }
+    .chip:disabled { cursor: default; opacity: 0.85; }
+    .chip:disabled:not([aria-pressed="true"]) { opacity: 0.5; }
   </style>
 </head>
 <body>
@@ -1679,11 +1872,137 @@
         <path d="m15.5 8.5-2 5-5 2 2-5 5-2z" />
       </Svg>
     );
+    const IconTarget = (p) => (
+      <Svg {...p}><circle cx="12" cy="12" r="9.5" /><circle cx="12" cy="12" r="5.5" /><circle cx="12" cy="12" r="1.5" /></Svg>
+    );
+    const IconClock = (p) => <Svg {...p}><circle cx="12" cy="12" r="9.5" /><path d="M12 7v5l3 2" /></Svg>;
+    const IconPR = (p) => (
+      <Svg {...p}><circle cx="6" cy="5.5" r="2.5" /><circle cx="6" cy="18.5" r="2.5" /><circle cx="18" cy="18.5" r="2.5" />
+        <path d="M6 8v8M18 16V9.5A2.5 2.5 0 0 0 15.5 7H11M13.5 4.5 11 7l2.5 2.5" /></Svg>
+    );
+    const IconBug = (p) => (
+      <Svg {...p}><rect x="7" y="7" width="10" height="13" rx="5" /><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7M12 11v9M3.5 13H7M17 13h3.5M4.5 8.5 7.5 10M19.5 8.5 16.5 10M4.5 18.5l3-1.5M19.5 18.5l-3-1.5" /></Svg>
+    );
+    const IconBlocks = (p) => (
+      <Svg {...p}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="8.5" y="14" width="7" height="7" rx="1.5" /><path d="M6.5 10v2h11v-2M12 12v2" /></Svg>
+    );
+    const IconHistory = (p) => <Svg {...p}><path d="M3 12a9 9 0 1 0 2.6-6.4M3 4v4h4M12 7.5V12l3 2" /></Svg>;
+    const IconArrowLeft = (p) => <Svg {...p}><path d="M19 12H5M11 18l-6-6 6-6" /></Svg>;
+    const IconMessage = (p) => <Svg {...p}><path d="M20 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" /></Svg>;
+
+    // ============================================================
+    // Drills — whiteboard-style practice that isn't about recall.
+    // Each drill is generated fresh (or picked from the system design catalog),
+    // worked against a soft time target, then graded by the `drills` Edge
+    // Function. There's no review schedule: attempts are a history log.
+    // ============================================================
+    const DRILL_KINDS = {
+      pr_review: {
+        label: 'PR review', Icon: IconPR, targetMin: 20,
+        blurb: 'A realistic Python pull request with planted bugs. Leave line comments, pick a decision, and see what you caught.',
+        focus: ['Concurrency', 'Security', 'API design', 'Error handling', 'Performance', 'Data pipelines', 'Caching', 'Testing'],
+      },
+      debugging: {
+        label: 'Debugging', Icon: IconBug, targetMin: 25,
+        blurb: 'A bug report, maybe a traceback, and a few files from an unfamiliar codebase. Find the root cause and fix it.',
+        focus: ['Shared mutable state', 'Async / event loop', 'Datetime & timezones', 'Money & rounding', 'Caching', 'Exception handling', 'Off-by-one', 'Race conditions'],
+      },
+      system_design: {
+        label: 'System design', Icon: IconBlocks, targetMin: 45,
+        blurb: 'A 45-minute whiteboard round in phases, then three follow-up questions from an AI interviewer before grading.',
+        focus: ['Real-time', 'Storage', 'Payments', 'Search', 'Streaming', 'Infra & platform', 'ML serving', 'Multi-region'],
+      },
+    };
+    const DRILL_KIND_KEYS = ['pr_review', 'debugging', 'system_design'];
+    const DRILL_LEVELS = ['Junior', 'Mid', 'Senior'];
+
+    const SD_PHASES = [
+      { k: 'requirements', label: 'Requirements', hint: 'Functional and non-functional. What is in and out of scope? Write the clarifying questions you would ask and the answers you are assuming.' },
+      { k: 'estimates', label: 'Capacity estimates', hint: 'Read and write QPS, storage growth, bandwidth. Rough numbers are fine; show the arithmetic and say which numbers drive decisions.' },
+      { k: 'api', label: 'API', hint: 'Endpoints or RPCs, request and response shapes, pagination, idempotency, auth.' },
+      { k: 'data_model', label: 'Data model', hint: 'Entities, keys, indexes and access patterns. Which store, and why that one?' },
+      { k: 'high_level', label: 'High-level design', hint: 'The components and the request path end to end, for both reads and writes.' },
+      { k: 'deep_dive', label: 'Deep dive', hint: 'Pick the one or two hardest parts of this problem and go deep: hot keys, consistency, ordering, backpressure, fan-out.' },
+      { k: 'tradeoffs', label: 'Tradeoffs & failure modes', hint: 'What did you give up? What breaks first at 10x? What happens when a dependency is down? What would you monitor?' },
+      { k: 'diagram', label: 'Diagram', hint: 'Optional. ASCII or Mermaid. The grader reads it as text.', mono: true },
+    ];
+
+    // Curated so the most common loop questions are always available offline and
+    // graded against hand-written key points rather than a model's guess at them.
+    // "Surprise me" asks the model for a fresh question instead.
+    const SYSTEM_DESIGN_CATALOG = [
+      { id: 'url-shortener', title: 'Design a URL shortener', tags: ['Storage', 'Caching', 'IDs'],
+        prompt: 'Design a service like bit.ly that turns long URLs into short links and redirects visitors. Users can optionally pick a custom alias and see click counts.',
+        scale: '100M new links per month, read:write around 100:1, redirects under 50 ms at p99, links live for years.',
+        key_points: ['Short-code generation without collisions (counter + base62, pre-allocated ID ranges, or hash with collision handling) and the tradeoffs of each', 'Redirect path dominated by reads: cache hot codes, 301 vs 302 and its effect on analytics', 'Storage estimate over years and a key-value store keyed by code', 'Custom aliases need uniqueness checks and reserved words', 'Click analytics written asynchronously (queue / log), not on the redirect hot path', 'Abuse: rate limiting creation, malicious URL scanning, enumeration of sequential codes'] },
+      { id: 'rate-limiter', title: 'Design a distributed rate limiter', tags: ['Infra & platform', 'Consistency'],
+        prompt: 'Design a rate limiter that an API gateway uses to cap requests per API key, for example 1,000 requests per minute, across a fleet of gateway servers.',
+        scale: '50 gateway nodes, 1M active keys, 500k requests/s at peak, added latency under 2 ms.',
+        key_points: ['Algorithm choice: token bucket vs sliding window log vs sliding window counter, with accuracy and memory tradeoffs', 'Shared state in Redis (or similar) with atomic increments / Lua scripts to avoid races', 'Latency budget: local caching or batching of counts, accepting some over-admission', 'Behaviour when the counter store is down: fail open vs fail closed', 'Response contract: 429, Retry-After, rate-limit headers', 'Hot keys and sharding the counter store; multi-region skew'] },
+      { id: 'news-feed', title: 'Design a social news feed', tags: ['Fan-out', 'Caching', 'Ranking'],
+        prompt: 'Design the home feed for a social network: users follow others and see a feed of recent posts from the people they follow.',
+        scale: '300M daily active users, 500M posts/day, average 200 follows, some accounts with 50M+ followers, feed loads under 200 ms.',
+        key_points: ['Fan-out on write vs fan-out on read, and a hybrid for celebrity accounts', 'Precomputed per-user feed caches (lists of post IDs) and hydration of post content', 'Post storage and ID scheme that sorts by time (e.g. snowflake IDs)', 'Pagination with cursors, not offsets', 'Ranking pipeline vs pure chronological, and where it sits', 'Handling deletes, privacy changes, and unfollows in precomputed feeds'] },
+      { id: 'chat', title: 'Design a chat service', tags: ['Real-time', 'Ordering'],
+        prompt: 'Design a messaging service with one-to-one and small group chats, online presence, read receipts, and message history across devices.',
+        scale: '50M daily users, 2B messages/day, groups up to 500 members, delivery under 500 ms when both users are online.',
+        key_points: ['Persistent connections (WebSockets) and a connection/gateway tier that tracks which server holds each user', 'Message ordering per conversation (sequence numbers per chat) and idempotent client retries', 'Storage partitioned by conversation for history reads', 'Offline delivery via push notifications and sync on reconnect using a per-device cursor', 'Group fan-out and the cost of large groups', 'Presence as soft state with heartbeats and TTLs; read receipts as cheap, lossy-tolerant events'] },
+      { id: 'notification-service', title: 'Design a notification service', tags: ['Queues', 'Reliability'],
+        prompt: 'Design a platform service that other teams call to send notifications to users over push, email and SMS, respecting user preferences and quiet hours.',
+        scale: '1B notifications/day with spikes of 10x during campaigns; transactional ones (password reset) must go out within seconds.',
+        key_points: ['Async pipeline: accept, enqueue, workers per channel, provider adapters', 'Priority separation so marketing spikes can not delay transactional messages', 'Idempotency keys and deduplication to avoid double sends on retry', 'Preferences, opt-outs, quiet hours, and per-user rate limits checked before sending', 'Retries with backoff, dead-letter queues, and provider failover', 'Delivery tracking and status callbacks from providers'] },
+      { id: 'typeahead', title: 'Design search autocomplete', tags: ['Search', 'Caching'],
+        prompt: 'Design the typeahead suggestions shown as a user types in a search box: the top 10 completions for a prefix, biased by popularity.',
+        scale: '10B queries/day, suggestions within 50 ms, popularity should reflect the last day or so.',
+        key_points: ['Trie or prefix index storing precomputed top-k per prefix', 'Offline or streaming aggregation of query logs to update popularity', 'Serving from memory, sharded by prefix, with aggressive caching (including browser/CDN)', 'Client-side debouncing and request cancellation', 'Filtering offensive or sensitive suggestions', 'Personalisation and freshness tradeoffs vs a global index'] },
+      { id: 'file-sync', title: 'Design a file sync service', tags: ['Storage', 'Consistency'],
+        prompt: 'Design a service like Dropbox: users keep a folder in sync across devices, share folders, and can recover older versions.',
+        scale: '100M users, average 10 GB each, files up to 50 GB, most changes are small edits to large files.',
+        key_points: ['Chunking files (content-defined chunking) and content-addressed, deduplicated block storage', 'Metadata service separate from blob storage', 'Sync protocol: change journal per user or namespace and cursor-based catch-up', 'Conflict handling when two devices edit offline (conflicted copies)', 'Resumable uploads and only sending changed chunks', 'Versioning and garbage collection of unreferenced blocks'] },
+      { id: 'ride-matching', title: 'Design ride-hailing dispatch', tags: ['Real-time', 'Geo'],
+        prompt: 'Design the part of a ride-hailing app that tracks driver locations and matches a rider request to a nearby driver.',
+        scale: '5M active drivers sending location every 4 seconds, 100k ride requests/minute at peak, match within a few seconds.',
+        key_points: ['High-rate location ingest kept in memory, not a relational write per ping', 'Geospatial index (geohash, quadtree, or H3 cells) for nearby-driver queries', 'Matching that avoids offering one driver to two riders (locking / reservation with timeout)', 'Partitioning by city or region', 'ETA rather than straight-line distance', 'Handling driver disconnects and stale locations'] },
+      { id: 'job-scheduler', title: 'Design a distributed job scheduler', tags: ['Infra & platform', 'Reliability'],
+        prompt: 'Design a service where teams register jobs to run on a cron schedule or at a specific time, with retries and a history of runs.',
+        scale: '10M scheduled jobs, 50k job starts/second at the top of the hour, jobs run from seconds to hours.',
+        key_points: ['Separating the scheduler (deciding what is due) from workers (running it)', 'Finding due jobs efficiently: time-bucketed index or priority queue, partitioned', 'Exactly-once vs at-least-once execution; leases and heartbeats so a crashed worker\'s job is retried; idempotent jobs', 'Thundering herd at the top of the hour and jitter', 'Retry policy, backoff, timeouts, and dead-lettering', 'Run history storage and observability'] },
+      { id: 'metrics', title: 'Design a metrics and monitoring system', tags: ['Streaming', 'Storage'],
+        prompt: 'Design a system that collects time-series metrics from every service, stores them, powers dashboards, and fires alerts.',
+        scale: '10k hosts, 50M active time series, 10M data points/second, dashboards over the last 30 days, alerts within a minute.',
+        key_points: ['Push vs pull collection and an aggregation/ingest tier', 'Time-series storage with compression (delta-of-delta, Gorilla-style) and downsampling / retention tiers', 'Cardinality explosion from high-cardinality labels and how to limit it', 'Query path for dashboards: pre-aggregation and caching', 'Alerting evaluated on a stream or on short intervals, with deduplication and routing', 'Monitoring the monitoring system itself'] },
+      { id: 'payments-ledger', title: 'Design a payments ledger', tags: ['Payments', 'Consistency'],
+        prompt: 'Design the internal ledger for a payments company: record money moving between accounts (charges, refunds, payouts) so balances are always correct and auditable.',
+        scale: '5,000 transactions/second, balances read on every transaction, records kept for 7+ years, zero tolerance for lost or duplicated money.',
+        key_points: ['Double-entry bookkeeping: every movement is balanced debit/credit entries, append-only', 'Idempotency keys on every write so retries never double-charge', 'Strong consistency for balance checks (single-writer per account, or serializable transactions) and hot-account contention', 'Integer minor units and explicit currency, never floats', 'Integration with external processors: async states, webhooks, reconciliation jobs', 'Audit trail, immutability, and corrections via reversing entries'] },
+      { id: 'video-streaming', title: 'Design video upload and streaming', tags: ['Storage', 'Streaming'],
+        prompt: 'Design a service like YouTube for uploading videos and watching them on any device with smooth playback.',
+        scale: '500 hours of video uploaded per minute, 1B views/day, global audience.',
+        key_points: ['Resumable uploads directly to object storage', 'Async transcoding pipeline into multiple bitrates and formats (DAG of tasks, workers)', 'Adaptive bitrate streaming (HLS/DASH) with segmented files', 'CDN delivery with origin shielding; popular vs long-tail content', 'Metadata, view counts updated asynchronously', 'Cost awareness: storage tiers for cold videos'] },
+      { id: 'web-crawler', title: 'Design a web crawler', tags: ['Distributed', 'Queues'],
+        prompt: 'Design a crawler that fetches billions of web pages to feed a search index and keeps them reasonably fresh.',
+        scale: '5B pages, re-crawl popular pages daily, 20k pages/second.',
+        key_points: ['URL frontier with prioritisation and per-host queues for politeness', 'robots.txt handling and per-domain rate limits', 'Deduplication of URLs (normalisation, Bloom filters) and of content (fingerprints / simhash)', 'Distributed fetchers partitioned by host; DNS caching', 'Re-crawl scheduling based on change frequency and importance', 'Handling traps, very large pages, and failures'] },
+      { id: 'kv-store', title: 'Design a distributed key-value store', tags: ['Storage', 'Consistency'],
+        prompt: 'Design a key-value store like Dynamo or Cassandra that scales horizontally and stays available when nodes fail.',
+        scale: '100 TB of data, 1M operations/second, single-digit ms latency, survive the loss of a rack.',
+        key_points: ['Partitioning with consistent hashing and virtual nodes', 'Replication factor and quorum reads/writes (R + W > N) and the tunable consistency it gives', 'Conflict resolution: last-write-wins vs vector clocks', 'Failure detection (gossip), hinted handoff, and anti-entropy with Merkle trees', 'Storage engine: LSM tree, memtable, SSTables, compaction', 'Adding and removing nodes and rebalancing'] },
+      { id: 'ticketing', title: 'Design event ticket booking', tags: ['Consistency', 'Contention'],
+        prompt: 'Design a ticketing site where users pick specific seats for concerts. Popular events sell out in minutes.',
+        scale: '50k-seat stadium, 2M users arriving when sales open, nobody may be sold the same seat twice.',
+        key_points: ['Seat holds with expiry while the user checks out, and atomic reservation (conditional update / row lock)', 'A virtual waiting room / queue to admit users at a controlled rate', 'Read-heavy seat map served from cache, with availability that can be slightly stale', 'Payment integration with idempotency and releasing holds on failure', 'Preventing bots and scalpers', 'Separating browsing traffic from the transactional booking path'] },
+      { id: 'leaderboard', title: 'Design a real-time gaming leaderboard', tags: ['Real-time', 'Caching'],
+        prompt: 'Design a global leaderboard for a mobile game: players see their rank and the top 100, updated as scores come in.',
+        scale: '100M players, 50k score updates/second, rank lookups under 50 ms.',
+        key_points: ['Sorted sets (e.g. Redis ZSET) for O(log n) rank and top-k', 'Sharding a leaderboard too big for one node, and approximate ranks for the long tail', 'Score submission validation and anti-cheat', 'Durable score storage separate from the ranking cache, with rebuild on failure', 'Time-windowed boards (daily/weekly) and resets', 'Friends leaderboards as a different access pattern'] },
+    ];
 
     const TABS = [
       { key: 'today', label: 'Today', Icon: IconInbox },
       { key: 'discover', label: 'Discover', Icon: IconCompass },
       { key: 'notes', label: 'Notes', Icon: IconNotes },
+      { key: 'drills', label: 'Drills', Icon: IconTarget },
       { key: 'add', label: 'Add', Icon: IconPlus },
       { key: 'all', label: 'All', Icon: IconLayers },
     ];
@@ -1708,6 +2027,12 @@
         sub: (s) => (s.notesTotal === 0
           ? 'Freeform notes on anything worth remembering — a pattern, a tradeoff, a story. Generate flashcards from any note and they join your review queue.'
           : `${s.notesTotal} ${s.notesTotal === 1 ? 'note' : 'notes'}${s.cardsDue > 0 ? ` · ${s.cardsDue} card${s.cardsDue === 1 ? '' : 's'} due` : ''}.`),
+      },
+      drills: {
+        title: 'Drills',
+        sub: (s) => (s.drillsTotal === 0
+          ? 'Unfamiliar problems, worked cold. PR reviews, debugging and system design rounds, generated fresh and graded by AI.'
+          : `${s.drillsTotal} ${s.drillsTotal === 1 ? 'attempt' : 'attempts'}${s.drillsAvg !== null ? ` · average ${s.drillsAvg}` : ''}. Each one is new, so this is a history, not a review queue.`),
       },
       add: {
         title: 'Add a problem',
@@ -2094,10 +2419,16 @@
       // batch. We cache so switching tabs doesn't re-hit the model on every
       // visit, but the user can force a fresh batch with the Refresh button.
       const [aiSuggest, setAiSuggest] = useState({ state: 'idle', picks: [] });
+      const [drills, setDrills] = useState([]);
+      const [openDrillId, setOpenDrillId] = useState(null);
+      // { kind, startedAt } while a drill is being generated. Lives here rather
+      // than in the Drills view so leaving the tab mid-generation is harmless.
+      const [drillGen, setDrillGen] = useState(null);
+      const [gradingIds, setGradingIds] = useState(() => new Set());
       const menuRef = useRef(null);
       const { toasts, notify, dismiss } = useToasts();
 
-      useEffect(() => { fetchProblems(); fetchSkips(); fetchNotes(); fetchCards(); }, []);
+      useEffect(() => { fetchProblems(); fetchSkips(); fetchNotes(); fetchCards(); fetchDrills(); }, []);
 
       useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 4);
@@ -2572,6 +2903,152 @@
       };
       // -----------------------------------------------------------------
 
+      // ---- Drills --------------------------------------------------------
+      // One row per attempt. The exercise (with its answer key) is stored on the
+      // row the moment it's generated, so a reload never throws away a drill
+      // that took a minute of model time to write.
+      const fetchDrills = async () => {
+        const { data, error } = await runSb(() =>
+          sb.from('drills').select('*').order('created_at', { ascending: false }));
+        if (error) {
+          if (isSchemaCacheError(error)) console.warn('[drills] schema cache stale; retry later', error);
+          return;
+        }
+        setDrills(data || []);
+      };
+
+      // Bigger model + long outputs: generation can take a minute or two. The
+      // function itself gives up at 140s, so the client waits a little longer.
+      const callDrills = (body) => callEdgeFunction('drills', body, 155000);
+
+      const patchDrill = async (id, patch, { quiet = false } = {}) => {
+        let before;
+        setDrills((prev) => {
+          before = prev.find((d) => d.id === id);
+          return prev.map((d) => (d.id === id ? { ...d, ...patch } : d));
+        });
+        const { error } = await runSb(() => sb.from('drills').update(patch).eq('id', id));
+        if (error) {
+          // Autosaves stay quiet and keep the local copy; the next save retries.
+          if (!quiet) {
+            if (before) setDrills((prev) => prev.map((d) => (d.id === id ? before : d)));
+            notify('Failed to save drill: ' + humaniseSbError(error), 'error');
+          } else {
+            console.warn('[drills] autosave failed', error);
+          }
+          return false;
+        }
+        return true;
+      };
+
+      const startDrill = async ({ kind, difficulty, focus, catalogItem }) => {
+        if (drillGen) return;
+        let exercise;
+        if (catalogItem) {
+          exercise = { ...catalogItem, kind: 'system_design', difficulty, topic: catalogItem.tags[0] || '', source: 'catalog' };
+        } else {
+          setDrillGen({ kind, startedAt: Date.now() });
+          // Recent titles of the same kind so the model doesn't hand back a near-duplicate.
+          const avoid = drills.filter((d) => d.kind === kind).slice(0, 20).map((d) => d.title);
+          const data = await callDrills({ action: 'generate', kind, difficulty, focus, avoid });
+          setDrillGen(null);
+          if (!data || !data.exercise) {
+            notify('Couldn\'t generate a drill. Check that the drills function is deployed, then try again.', 'error');
+            return;
+          }
+          exercise = data.exercise;
+        }
+        const row = {
+          id: `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          user_id: user.id,
+          kind,
+          title: exercise.title || DRILL_KINDS[kind].label,
+          topic: exercise.topic || focus || null,
+          difficulty,
+          exercise,
+          response: {},
+          followups: null,
+          grade: null,
+          score: null,
+          status: 'in_progress',
+          duration_sec: 0,
+          submitted_at: null,
+          created_at: new Date().toISOString(),
+        };
+        setDrills((prev) => [row, ...prev]);
+        setOpenDrillId(row.id);
+        const { error } = await runSb(() => sb.from('drills').insert(row));
+        if (error) {
+          setDrills((prev) => prev.filter((d) => d.id !== row.id));
+          setOpenDrillId(null);
+          notify('Failed to save drill: ' + humaniseSbError(error), 'error');
+        }
+      };
+
+      const requestFollowups = async (drill, response) => {
+        const data = await callDrills({ action: 'followups', kind: drill.kind, exercise: drill.exercise, response });
+        return Array.isArray(data?.questions) && data.questions.length ? data.questions : null;
+      };
+
+      // Submit locks the attempt (status → submitted) before grading, so a
+      // grader failure still leaves a finished attempt whose answer key the
+      // user can check by hand, with a retry button.
+      const gradeDrill = async (id, fields) => {
+        const drill = drills.find((d) => d.id === id);
+        if (!drill || gradingIds.has(id)) return;
+        const submitted = {
+          ...fields,
+          status: drill.status === 'graded' ? 'graded' : 'submitted',
+          submitted_at: drill.submitted_at || new Date().toISOString(),
+        };
+        await patchDrill(id, submitted, { quiet: true });
+        setGradingIds((s) => new Set(s).add(id));
+        const merged = { ...drill, ...submitted };
+        const data = await callDrills({
+          action: 'grade',
+          kind: merged.kind,
+          exercise: merged.exercise,
+          response: merged.response,
+          followups: merged.followups,
+          duration_sec: merged.duration_sec,
+        });
+        setGradingIds((s) => { const n = new Set(s); n.delete(id); return n; });
+        if (!data || !data.grade) {
+          notify('Grading didn\'t come back. The answer key is revealed, and you can retry grading.', 'error');
+          return;
+        }
+        const ok = await patchDrill(id, { grade: data.grade, score: data.grade.score, status: 'graded' });
+        if (ok) notify(`Graded: ${data.grade.score} / 100 · ${data.grade.verdict}`, 'success');
+      };
+
+      const deleteDrill = async (id) => {
+        let gone;
+        setDrills((prev) => { gone = prev.find((d) => d.id === id); return prev.filter((d) => d.id !== id); });
+        if (openDrillId === id) setOpenDrillId(null);
+        const { error } = await runSb(() => sb.from('drills').delete().eq('id', id));
+        if (error) {
+          if (gone) setDrills((prev) => [gone, ...prev]);
+          notify('Failed to delete: ' + humaniseSbError(error), 'error');
+        } else {
+          notify('Drill removed', 'success');
+        }
+      };
+
+      // Hands the grader's feedback to Notes, where Generate cards turns each
+      // paragraph into a flashcard. The drill itself never gets scheduled; the
+      // lessons can.
+      const saveDrillLessons = async (drill) => {
+        const body = drillLessonsBody(drill);
+        if (!body) { notify('Nothing to save yet. Grade the drill first.', 'error'); return; }
+        const note = await addNote({
+          title: `${drill.title}: lessons`,
+          topic: DRILL_KINDS[drill.kind].label,
+          body,
+        });
+        if (note) { setView('notes'); notify('Lessons saved to Notes. Hit Generate cards to quiz yourself.', 'success'); }
+      };
+      // -----------------------------------------------------------------
+
       const addProblem = async (data) => {
         const newProblem = {
           id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -2665,6 +3142,11 @@
         notesTotal: notes.length,
         cardsTotal: cards.length,
         cardsDue: dueCards.length,
+        drillsTotal: drills.length,
+        drillsAvg: (() => {
+          const scored = drills.filter((d) => typeof d.score === 'number');
+          return scored.length ? Math.round(scored.reduce((a, d) => a + d.score, 0) / scored.length) : null;
+        })(),
       };
 
       const activeIndex = TABS.findIndex((t) => t.key === view);
@@ -2730,6 +3212,15 @@
               onGenerateCards={generateCards}
               onAddCard={addManualCard}
               onRateCard={rateCard} onDeleteCard={deleteCard}
+            />
+          )}
+          {view === 'drills' && (
+            <DrillsView
+              drills={drills} openId={openDrillId} onOpen={setOpenDrillId}
+              generating={drillGen} gradingIds={gradingIds}
+              onStart={startDrill} onPatch={patchDrill} onGrade={gradeDrill}
+              onRequestFollowups={requestFollowups}
+              onDelete={deleteDrill} onSaveLessons={saveDrillLessons}
             />
           )}
           {view === 'add' && (
@@ -4204,6 +4695,1007 @@
         </div>
       );
     }
+    // ============================================================
+    // Drills
+    // ============================================================
+    const formatClock = (sec) => {
+      const s = Math.max(0, Math.floor(sec || 0));
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+      return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`;
+    };
+    const shortDate = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
+
+    // Seconds since `startedAt`, ticking while `active`.
+    function useElapsed(startedAt, active) {
+      const [now, setNow] = useState(() => Date.now());
+      useEffect(() => {
+        if (!active) return;
+        setNow(Date.now());
+        const h = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(h);
+      }, [active, startedAt]);
+      return startedAt ? Math.max(0, Math.round((now - startedAt) / 1000)) : 0;
+    }
+
+    // Line diff via LCS. PR files are capped at ~150 lines by the generator, so
+    // the O(n·m) table is tiny; anything absurd falls back to delete-all/add-all
+    // rather than locking the tab.
+    function lineDiff(before, after) {
+      const split = (t) => (t ? t.replace(/\n$/, '').split('\n') : []);
+      const a = split(before), b = split(after);
+      const n = a.length, m = b.length;
+      if (n * m > 400000) {
+        return [
+          ...a.map((text, i) => ({ t: 'del', o: i + 1, n: null, text })),
+          ...b.map((text, j) => ({ t: 'add', o: null, n: j + 1, text })),
+        ];
+      }
+      const w = m + 1;
+      const dp = new Uint32Array((n + 1) * w);
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+          dp[i * w + j] = a[i] === b[j] ? dp[(i + 1) * w + j + 1] + 1 : Math.max(dp[(i + 1) * w + j], dp[i * w + j + 1]);
+        }
+      }
+      const rows = [];
+      let i = 0, j = 0;
+      while (i < n && j < m) {
+        if (a[i] === b[j]) { rows.push({ t: 'ctx', o: i + 1, n: j + 1, text: a[i] }); i++; j++; }
+        else if (dp[(i + 1) * w + j] >= dp[i * w + j + 1]) { rows.push({ t: 'del', o: i + 1, n: null, text: a[i] }); i++; }
+        else { rows.push({ t: 'add', o: null, n: j + 1, text: b[j] }); j++; }
+      }
+      while (i < n) { rows.push({ t: 'del', o: i + 1, n: null, text: a[i] }); i++; }
+      while (j < m) { rows.push({ t: 'add', o: null, n: j + 1, text: b[j] }); j++; }
+      return rows;
+    }
+
+    // Answer keys anchor to a line by quoting it, because models are bad at
+    // counting lines. Find that line in the file: exact, then trimmed, then a
+    // substring match for snippets the model shortened.
+    function anchorLine(content, snippet) {
+      if (!content || !snippet) return null;
+      const lines = content.split('\n');
+      const want = snippet.replace(/\n.*$/s, '');
+      const t = want.trim();
+      let idx = lines.indexOf(want);
+      if (idx < 0) idx = lines.findIndex((l) => l.trim() === t);
+      if (idx < 0 && t.length >= 6) idx = lines.findIndex((l) => l.includes(t) || (l.trim().length >= 6 && t.includes(l.trim())));
+      return idx >= 0 ? idx + 1 : null;
+    }
+
+    // The note body handed to Notes by "Save lessons". One paragraph per
+    // lesson so Generate cards makes one flashcard each.
+    function drillLessonsBody(drill) {
+      const g = drill.grade;
+      if (!g) return '';
+      const ex = drill.exercise || {};
+      const parts = [...(g.improvements || [])];
+      if (drill.kind === 'pr_review') {
+        const result = new Map((g.issues || []).map((i) => [i.id, i.caught]));
+        for (const issue of (ex.issues || [])) {
+          if (result.get(issue.id) === 'yes') continue;
+          parts.push(`Missed in review, ${issue.severity} ${issue.category}: ${issue.title}. ${issue.explanation}`);
+        }
+      } else if (drill.kind === 'debugging' && ex.answer) {
+        parts.push(`Root cause of "${drill.title}": ${ex.answer.root_cause}`);
+        if (ex.answer.fix) parts.push(`The fix: ${ex.answer.fix}`);
+      } else if (drill.kind === 'system_design') {
+        for (const k of (g.key_points || [])) {
+          if (k.covered === 'yes') continue;
+          parts.push(`${drill.title}, key point: ${k.point}${k.note ? ` (${k.note})` : ''}`);
+        }
+        if (g.model_outline) parts.push(`Strong outline for ${drill.title}:\n${g.model_outline}`);
+      }
+      return parts.filter(Boolean).join('\n\n');
+    }
+
+    // Wrapped code lines keep Python's indentation readable: continuation lines
+    // hang two columns in from where the code on that line starts.
+    const hangingIndent = (text) => {
+      const lead = (text.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '    ').length;
+      const w = Math.min(lead, 40) + 2;
+      return { paddingLeft: `${w}ch`, textIndent: `-${w}ch` };
+    };
+    const formatPractice = (sec) => (sec < 3600 ? `${Math.round(sec / 60)}m` : `${(sec / 3600).toFixed(1)}h`);
+
+    const SCORE_TONE = (score) => (score >= 75 ? 'good' : score >= 50 ? 'mid' : 'low');
+    const COVER_TONE = { yes: 'good', partial: 'mid', no: 'low' };
+    const COVER_LABEL = { yes: 'Caught', partial: 'Partly', no: 'Missed' };
+
+    function DrillsView({
+      drills, openId, onOpen, generating, gradingIds,
+      onStart, onPatch, onGrade, onRequestFollowups, onDelete, onSaveLessons,
+    }) {
+      const [tab, setTab] = useState('new');
+      const open = drills.find((d) => d.id === openId) || null;
+
+      if (open) {
+        return (
+          <DrillWorkspace key={open.id} drill={open} grading={gradingIds.has(open.id)}
+            onBack={() => onOpen(null)} onPatch={onPatch} onGrade={onGrade}
+            onRequestFollowups={onRequestFollowups}
+            onDelete={() => onDelete(open.id)} onSaveLessons={() => onSaveLessons(open)} />
+        );
+      }
+
+      return (
+        <div className="anim-rise">
+          <div className="note-tabs" role="tablist" style={{ display: 'inline-flex', marginBottom: 18 }}>
+            {[
+              { k: 'new', label: 'New drill', Icon: IconPlus },
+              { k: 'history', label: 'History', Icon: IconHistory, count: drills.length },
+            ].map((t) => (
+              <button key={t.k} onClick={() => setTab(t.k)} role="tab" aria-selected={tab === t.k}
+                className="note-tab" data-active={tab === t.k}>
+                <t.Icon size={13} /> {t.label}
+                {typeof t.count === 'number' && <span className="note-tab-count">{t.count}</span>}
+              </button>
+            ))}
+          </div>
+          {tab === 'new'
+            ? <DrillLauncher generating={generating} onStart={onStart} onOpen={onOpen}
+                inProgress={drills.filter((d) => d.status === 'in_progress')} />
+            : <DrillHistory drills={drills} onOpen={onOpen} onGoNew={() => setTab('new')} />}
+        </div>
+      );
+    }
+
+    function DrillLauncher({ generating, onStart, onOpen, inProgress }) {
+      const [kind, setKind] = useState('pr_review');
+      const [level, setLevel] = useState('Mid');
+      const [focus, setFocus] = useState('');
+      const [pick, setPick] = useState('ai'); // system design: catalog id or 'ai'
+      const elapsed = useElapsed(generating?.startedAt, !!generating);
+      const meta = DRILL_KINDS[kind];
+      const catalogItem = kind === 'system_design' && pick !== 'ai'
+        ? SYSTEM_DESIGN_CATALOG.find((c) => c.id === pick) : null;
+      const showFocus = kind !== 'system_design' || pick === 'ai';
+
+      const start = () => onStart({ kind, difficulty: level, focus: showFocus ? focus.trim() : '', catalogItem });
+
+      if (generating) {
+        const g = DRILL_KINDS[generating.kind];
+        return (
+          <div className="card drill-generating anim-fade">
+            <div className="drill-spinner" aria-hidden="true"><g.Icon size={20} /></div>
+            <div>
+              <div className="display" style={{ fontSize: 24, lineHeight: 1.2 }}>
+                Writing a fresh {g.label.toLowerCase()} drill…
+              </div>
+              <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, margin: '6px 0 0' }}>
+                <span className="mono tnum">{formatClock(elapsed)}</span> · A larger model writes the code and the hidden answer key, which usually takes one to two minutes. You can switch tabs; it keeps going.
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="stack-5">
+          {inProgress.length > 0 && (
+            <div className="panel" style={{ padding: 14 }}>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>Pick up where you left off</div>
+              <div className="stack-2">
+                {inProgress.slice(0, 3).map((d) => {
+                  const K = DRILL_KINDS[d.kind];
+                  return (
+                    <button key={d.id} onClick={() => onOpen(d.id)} className="drill-resume">
+                      <K.Icon size={14} style={{ color: 'var(--muted)' }} />
+                      <span className="truncate" style={{ flex: 1, textAlign: 'left' }}>{d.title}</span>
+                      <span className="mono tnum" style={{ fontSize: 11, color: 'var(--muted)' }}>{formatClock(d.duration_sec)}</span>
+                      <IconChevron size={14} style={{ color: 'var(--faint)' }} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="drill-kinds" role="radiogroup" aria-label="Drill type">
+            {DRILL_KIND_KEYS.map((k) => {
+              const K = DRILL_KINDS[k];
+              return (
+                <button key={k} onClick={() => setKind(k)} className="drill-kind"
+                  role="radio" aria-checked={kind === k} data-active={kind === k}>
+                  <span className="drill-kind-icon"><K.Icon size={18} /></span>
+                  <span className="drill-kind-title">{K.label}</span>
+                  <span className="drill-kind-blurb">{K.blurb}</span>
+                  <span className="mono drill-kind-meta"><IconClock size={11} /> ~{K.targetMin} min · Python</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="card" style={{ padding: 20 }}>
+            <div className="stack-4">
+              <div>
+                <span className="field-label">Level</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {DRILL_LEVELS.map((l) => (
+                    <button key={l} onClick={() => setLevel(l)} className="chip" aria-pressed={level === l}>{l}</button>
+                  ))}
+                </div>
+              </div>
+
+              {kind === 'system_design' && (
+                <div>
+                  <span className="field-label">Question</span>
+                  <div className="sd-catalog">
+                    <button onClick={() => setPick('ai')} className="sd-pick" data-active={pick === 'ai'}>
+                      <span className="sd-pick-title"><IconSparkle size={13} style={{ color: 'var(--accent)' }} /> Surprise me</span>
+                      <span className="sd-pick-tags">AI writes a fresh question and rubric</span>
+                    </button>
+                    {SYSTEM_DESIGN_CATALOG.map((c) => (
+                      <button key={c.id} onClick={() => setPick(c.id)} className="sd-pick" data-active={pick === c.id}>
+                        <span className="sd-pick-title">{c.title.replace(/^Design (a |an )?/, '')}</span>
+                        <span className="sd-pick-tags">{c.tags.join(' · ')}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showFocus && (
+                <div>
+                  <span className="field-label">Focus <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--faint)', fontWeight: 400 }}>(optional)</span></span>
+                  <div className="flex flex-wrap gap-1.5" style={{ marginBottom: 10 }}>
+                    {meta.focus.map((f) => (
+                      <button key={f} onClick={() => setFocus(focus === f ? '' : f)} className="chip" aria-pressed={focus === f}>{f}</button>
+                    ))}
+                  </div>
+                  <input value={focus} onChange={(e) => setFocus(e.target.value)} className="field field-inset"
+                    placeholder={kind === 'pr_review' ? 'Or type one, e.g. "FastAPI auth middleware"' : kind === 'debugging' ? 'Or type one, e.g. "asyncio worker pool"' : 'Or type one, e.g. "collaborative document editing"'} />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-3" style={{ flexWrap: 'wrap', paddingTop: 4 }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, maxWidth: '52ch' }}>
+                  {catalogItem
+                    ? 'Starts right away. Graded against hand-written key points.'
+                    : 'Generated fresh, so you have never seen it before. The answer key stays hidden until you submit.'}
+                </p>
+                <button onClick={start} className="btn btn-primary">
+                  {catalogItem ? <><IconTarget size={14} /> Start</> : <><IconBolt size={14} /> Generate drill</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function DrillHistory({ drills, onOpen, onGoNew }) {
+      const [filter, setFilter] = useState('all');
+      const shown = filter === 'all' ? drills : drills.filter((d) => d.kind === filter);
+      const graded = shown.filter((d) => typeof d.score === 'number');
+      const avg = graded.length ? Math.round(graded.reduce((a, d) => a + d.score, 0) / graded.length) : null;
+      const totalSec = shown.reduce((a, d) => a + (d.duration_sec || 0), 0);
+
+      // Weakest rubric dimensions across graded attempts: the closest thing to
+      // Discover's "struggling patterns" for drills.
+      const weak = useMemo(() => {
+        const acc = new Map();
+        for (const d of graded) {
+          for (const dim of (d.grade?.dimensions || [])) {
+            const key = `${DRILL_KINDS[d.kind].label} · ${dim.name}`;
+            const e = acc.get(key) || { sum: 0, n: 0 };
+            e.sum += dim.score; e.n += 1;
+            acc.set(key, e);
+          }
+        }
+        return [...acc.entries()]
+          .map(([name, e]) => ({ name, avg: e.sum / e.n, n: e.n }))
+          .filter((w) => w.avg < 3)
+          .sort((a, b) => a.avg - b.avg)
+          .slice(0, 4);
+      }, [shown]);
+
+      if (drills.length === 0) {
+        return (
+          <EmptyState icon={<IconTarget size={22} />} title="No drills yet"
+            body="Generate a PR review, a debugging ticket or a system design round. Every attempt lands here with its score, time and feedback."
+            cta="Start a drill" ctaIcon={<IconBolt size={14} />} onCta={onGoNew} />
+        );
+      }
+
+      return (
+        <div className="stack-4">
+          <div className="cards-summary">
+            <div className="stat-tile"><div className="k">Attempts</div><div className="v tnum">{shown.length}</div></div>
+            <div className="stat-tile accent"><div className="k">Avg score</div><div className="v tnum">{avg === null ? '–' : avg}</div></div>
+            <div className="stat-tile"><div className="k">Time</div><div className="v tnum">{formatPractice(totalSec)}</div></div>
+          </div>
+
+          {weak.length > 0 && (
+            <div className="panel" style={{ padding: 16 }}>
+              <div className="eyebrow" style={{ marginBottom: 12 }}>Weakest areas</div>
+              <div className="stack-3">
+                {weak.map((w) => (
+                  <div key={w.name} className="dim-row">
+                    <span className="dim-name">{w.name}</span>
+                    <div className="dim-track"><div className="dim-fill" data-tone={w.avg >= 3 ? 'good' : w.avg >= 2.25 ? 'mid' : 'low'} style={{ width: `${(w.avg / 4) * 100}%` }} /></div>
+                    <span className="mono tnum dim-val">{w.avg.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-1.5">
+            {['all', ...DRILL_KIND_KEYS].map((k) => (
+              <button key={k} onClick={() => setFilter(k)} className="chip" aria-pressed={filter === k}>
+                {k === 'all' ? 'All' : DRILL_KINDS[k].label}
+              </button>
+            ))}
+          </div>
+
+          <div className="stack-2">
+            {shown.map((d) => {
+              const K = DRILL_KINDS[d.kind];
+              return (
+                <button key={d.id} onClick={() => onOpen(d.id)} className="drill-row">
+                  <span className="drill-row-icon"><K.Icon size={15} /></span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                    <span className="drill-row-title">{d.title}</span>
+                    <span className="drill-row-meta mono">
+                      {K.label} · {d.difficulty || 'Mid'}{d.topic ? ` · ${d.topic}` : ''} · {shortDate(d.created_at)} · {formatClock(d.duration_sec)}
+                    </span>
+                  </span>
+                  {typeof d.score === 'number'
+                    ? <span className="score-badge tnum" data-tone={SCORE_TONE(d.score)}>{d.score}</span>
+                    : <span className={`pill ${d.status === 'in_progress' ? 'pill-accent' : ''}`}>{d.status === 'in_progress' ? 'in progress' : 'ungraded'}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function DrillWorkspace({ drill, grading, onBack, onPatch, onGrade, onRequestFollowups, onDelete, onSaveLessons }) {
+      const K = DRILL_KINDS[drill.kind];
+      const ex = drill.exercise || {};
+      const editable = drill.status === 'in_progress' && !grading;
+      const revealed = !editable;
+      const [response, setResponse] = useState(() => drill.response || {});
+      const [followups, setFollowups] = useState(() => drill.followups || null);
+      const [elapsed, setElapsed] = useState(drill.duration_sec || 0);
+      const [fuState, setFuState] = useState('idle'); // idle | loading | error
+      const [confirmDel, setConfirmDel] = useState(false);
+
+      // Active-time clock: only ticks while the attempt is open, editable and
+      // the tab is visible, so walking away doesn't inflate the history.
+      useEffect(() => {
+        if (!editable) return;
+        const h = setInterval(() => { if (document.visibilityState === 'visible') setElapsed((e) => e + 1); }, 1000);
+        return () => clearInterval(h);
+      }, [editable]);
+
+      const latest = useRef({});
+      latest.current = { response, followups, duration_sec: elapsed };
+      const editableRef = useRef(editable);
+      editableRef.current = editable;
+      const patchRef = useRef(onPatch);
+      patchRef.current = onPatch;
+
+      // Debounced autosave of the work itself.
+      const firstRun = useRef(true);
+      useEffect(() => {
+        if (firstRun.current) { firstRun.current = false; return; }
+        if (!editable) return;
+        const h = setTimeout(() => onPatch(drill.id, latest.current, { quiet: true }), 900);
+        return () => clearTimeout(h);
+      }, [response, followups]);
+
+      // Keep the stored clock roughly current, and flush everything on leave.
+      useEffect(() => {
+        if (editable && elapsed > 0 && elapsed % 30 === 0) onPatch(drill.id, { duration_sec: elapsed }, { quiet: true });
+      }, [elapsed]);
+      useEffect(() => () => {
+        if (editableRef.current) patchRef.current(drill.id, latest.current, { quiet: true });
+      }, []);
+
+      const submit = () => onGrade(drill.id, { response, followups, duration_sec: elapsed });
+      const retryGrade = () => onGrade(drill.id, { response: drill.response, followups: drill.followups, duration_sec: drill.duration_sec });
+
+      const askFollowups = async () => {
+        setFuState('loading');
+        const qs = await onRequestFollowups(drill, response);
+        if (!qs) { setFuState('error'); return; }
+        setFuState('idle');
+        setFollowups(qs.map((q) => ({ q, a: '' })));
+      };
+
+      const over = elapsed > K.targetMin * 60;
+      const designStage = drill.kind === 'system_design' && editable ? (followups ? 'followups' : 'work') : null;
+
+      let primary = null;
+      if (editable) {
+        if (designStage === 'work') {
+          primary = (
+            <>
+              <button onClick={submit} className="btn btn-ghost btn-sm" disabled={fuState === 'loading'}>Skip follow-ups</button>
+              <button onClick={askFollowups} className="btn btn-primary" disabled={fuState === 'loading'}>
+                <IconMessage size={14} /> {fuState === 'loading' ? 'Interviewer is reading…' : 'Done: take follow-ups'}
+              </button>
+            </>
+          );
+        } else {
+          primary = (
+            <button onClick={submit} className="btn btn-primary"><IconCheck size={14} /> Submit for grading</button>
+          );
+        }
+      }
+
+      return (
+        <div className="drill-workspace anim-rise">
+          <button onClick={onBack} className="btn btn-quiet btn-sm" style={{ alignSelf: 'flex-start', marginLeft: -8 }}>
+            <IconArrowLeft size={14} /> All drills
+          </button>
+
+          <header>
+            <div className="eyebrow flex items-center gap-1.5" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+              <K.Icon size={12} /> {K.label} · {drill.difficulty || 'Mid'}{drill.topic ? ` · ${drill.topic}` : ''}
+            </div>
+            <h2 className="display drill-title">{drill.title}</h2>
+          </header>
+
+          {revealed && <GradePanel drill={drill} grading={grading} onRetry={retryGrade} />}
+
+          {drill.kind === 'pr_review' && (
+            <PrReviewPanel ex={ex} response={editable ? response : (drill.response || {})} setResponse={setResponse}
+              editable={editable} revealed={revealed && !grading} grade={drill.grade} />
+          )}
+          {drill.kind === 'debugging' && (
+            <DebugPanel ex={ex} response={editable ? response : (drill.response || {})} setResponse={setResponse}
+              editable={editable} revealed={revealed && !grading} />
+          )}
+          {drill.kind === 'system_design' && (
+            <DesignPanel ex={ex} response={editable ? response : (drill.response || {})} setResponse={setResponse}
+              followups={editable ? followups : drill.followups} setFollowups={setFollowups}
+              editable={editable} revealed={revealed && !grading} grade={drill.grade} />
+          )}
+
+          {fuState === 'error' && (
+            <div className="panel" style={{ padding: 12, borderColor: 'var(--danger)', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13 }}>
+              The interviewer didn't respond. Try again, or submit without follow-ups.
+            </div>
+          )}
+
+          <div className="drill-actionbar">
+            <span className="drill-clock mono tnum" data-over={editable && over}>
+              <IconClock size={13} /> {formatClock(elapsed)}
+              <span style={{ color: 'var(--faint)' }}>&nbsp;/ {K.targetMin}:00</span>
+            </span>
+            <div className="flex items-center gap-2" style={{ marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {!editable && !grading && drill.grade && (
+                <button onClick={onSaveLessons} className="btn btn-ghost btn-sm"><IconNotes size={13} /> Save lessons to Notes</button>
+              )}
+              {!editable && !grading && (
+                confirmDel ? (
+                  <>
+                    <button onClick={onDelete} className="btn btn-danger btn-sm">Delete</button>
+                    <button onClick={() => setConfirmDel(false)} className="btn btn-ghost btn-sm">Cancel</button>
+                  </>
+                ) : (
+                  <button onClick={() => setConfirmDel(true)} className="icon-btn" aria-label="Delete drill"><IconTrash size={14} /></button>
+                )
+              )}
+              {primary}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ---- Grade --------------------------------------------------------
+    function GradePanel({ drill, grading, onRetry }) {
+      const [startedAt, setStartedAt] = useState(() => Date.now());
+      useEffect(() => { if (grading) setStartedAt(Date.now()); }, [grading]);
+      const elapsed = useElapsed(startedAt, grading);
+      const g = drill.grade;
+
+      if (grading) {
+        return (
+          <div className="card drill-generating anim-fade">
+            <div className="drill-spinner" aria-hidden="true"><IconTarget size={20} /></div>
+            <div>
+              <div className="display" style={{ fontSize: 24, lineHeight: 1.2 }}>Grading…</div>
+              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '6px 0 0' }}>
+                <span className="mono tnum">{formatClock(elapsed)}</span> · Comparing your answer against the hidden key.
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      if (!g) {
+        return (
+          <div className="panel anim-fade" style={{ padding: 16, borderColor: 'var(--danger)', background: 'var(--danger-soft)' }}>
+            <div className="flex items-start gap-2" style={{ marginBottom: 12 }}>
+              <IconAlert size={15} style={{ color: 'var(--danger)', marginTop: 2 }} />
+              <div style={{ color: 'var(--danger)', fontSize: 13, lineHeight: 1.55 }}>
+                No grade yet. The grader failed or timed out. The answer key is shown below so you can check your work, or try grading again.
+              </div>
+            </div>
+            <button onClick={onRetry} className="btn btn-primary btn-sm">Retry grading</button>
+          </div>
+        );
+      }
+
+      const issueTotal = (drill.exercise?.issues || []).length;
+      const caught = (g.issues || []).filter((i) => i.caught === 'yes').length;
+
+      return (
+        <section className="card grade-card anim-fade">
+          <div className="grade-top">
+            <div className="grade-score" data-tone={SCORE_TONE(g.score)}>
+              <span className="display tnum">{g.score}</span>
+              <span className="mono">/ 100</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 8 }}>
+                <span className="pill verdict-pill" data-tone={SCORE_TONE(g.score)}>{g.verdict}</span>
+                {drill.kind === 'pr_review' && issueTotal > 0 && (
+                  <span className="pill">{caught} of {issueTotal} planted issues caught</span>
+                )}
+                {drill.kind === 'debugging' && g.root_cause_found && (
+                  <span className="pill" data-tone={COVER_TONE[g.root_cause_found]}>root cause: {g.root_cause_found}</span>
+                )}
+              </div>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65 }}>{g.summary}</p>
+            </div>
+          </div>
+
+          {g.dimensions?.length > 0 && (
+            <div className="stack-3" style={{ marginTop: 20 }}>
+              {g.dimensions.map((d) => (
+                <div key={d.name}>
+                  <div className="dim-row">
+                    <span className="dim-name">{d.name}</span>
+                    <div className="dim-track"><div className="dim-fill" data-tone={d.score >= 3 ? 'good' : d.score === 2 ? 'mid' : 'low'} style={{ width: `${(d.score / 4) * 100}%` }} /></div>
+                    <span className="mono tnum dim-val">{d.score}/4</span>
+                  </div>
+                  {d.comment && <div className="dim-comment">{d.comment}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grade-lists">
+            {g.strengths?.length > 0 && (
+              <div>
+                <div className="eyebrow" style={{ color: 'var(--success)', marginBottom: 8 }}>Strengths</div>
+                <ul className="grade-ul">{g.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
+              </div>
+            )}
+            {g.improvements?.length > 0 && (
+              <div>
+                <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 8 }}>Do differently</div>
+                <ul className="grade-ul">{g.improvements.map((s, i) => <li key={i}>{s}</li>)}</ul>
+              </div>
+            )}
+          </div>
+          {g.model && <div className="mono" style={{ marginTop: 14, fontSize: 10, color: 'var(--faint)' }}>graded by {g.model}</div>}
+        </section>
+      );
+    }
+
+    // ---- PR review ----------------------------------------------------
+    function PrReviewPanel({ ex, response, setResponse, editable, revealed, grade }) {
+      const comments = response.comments || [];
+      const issueResult = useMemo(() => new Map((grade?.issues || []).map((i) => [i.id, i])), [grade]);
+      const commentResult = useMemo(() => new Map((grade?.comments || []).map((c) => [c.id, c])), [grade]);
+      const files = ex.files || [];
+      const added = useMemo(() => files.reduce((a, f) => a + lineDiff(f.before, f.after).filter((r) => r.t === 'add').length, 0), [ex]);
+
+      const addComment = (c) => setResponse((r) => ({ ...r, comments: [...(r.comments || []), c] }));
+      const removeComment = (id) => setResponse((r) => ({ ...r, comments: (r.comments || []).filter((c) => c.id !== id) }));
+
+      return (
+        <div className="stack-4">
+          <div className="card" style={{ padding: 18 }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 10, color: 'var(--muted)', fontSize: 12 }}>
+              <IconPR size={14} />
+              <span className="mono">{files.length} file{files.length === 1 ? '' : 's'} · +{added}</span>
+            </div>
+            <div style={{ fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{ex.description}</div>
+          </div>
+
+          {editable && (
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)' }}>
+              Click any line to leave a comment. Review it the way you would at work: what has to change before merge, and why.
+            </p>
+          )}
+
+          {files.map((f) => (
+            <DiffFile key={f.path} file={f} editable={editable}
+              comments={comments.filter((c) => c.path === f.path)}
+              onAdd={addComment} onRemove={removeComment}
+              issues={revealed ? (ex.issues || []).filter((i) => i.file === f.path) : []}
+              issueResult={issueResult} commentResult={commentResult} />
+          ))}
+
+          <div className="card" style={{ padding: 18 }}>
+            <span className="field-label">Review decision</span>
+            <div className="flex flex-wrap gap-1.5" style={{ marginBottom: 14 }}>
+              {['Approve', 'Comment', 'Request changes'].map((d) => (
+                <button key={d} className="chip" aria-pressed={response.decision === d} disabled={!editable}
+                  onClick={() => setResponse((r) => ({ ...r, decision: d }))}>{d}</button>
+              ))}
+            </div>
+            {editable ? (
+              <Field label="Summary comment" value={response.summary || ''} rows={4} inset
+                onChange={(v) => setResponse((r) => ({ ...r, summary: v }))}
+                placeholder="Overall take for the author: the must-fixes, what's nice, anything to follow up on later." />
+            ) : (
+              <div>
+                <span className="field-label">Summary comment</span>
+                <div className="readonly-block">{response.summary || <span style={{ color: 'var(--faint)' }}>(none)</span>}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const DIFF_CONTEXT = 3;
+
+    function DiffFile({ file, editable, comments, onAdd, onRemove, issues, issueResult, commentResult }) {
+      const rows = useMemo(() => lineDiff(file.before || '', file.after || ''), [file.before, file.after]);
+      const [expanded, setExpanded] = useState(() => new Set());
+      const [composer, setComposer] = useState(null);
+      const [draft, setDraft] = useState('');
+
+      const keyOf = (r) => (r.t === 'del' ? `old:${r.o}` : `new:${r.n}`);
+      const byKey = useMemo(() => {
+        const m = new Map();
+        for (const c of comments) {
+          const k = `${c.side}:${c.line}`;
+          if (!m.has(k)) m.set(k, []);
+          m.get(k).push(c);
+        }
+        return m;
+      }, [comments]);
+      const { issuesByLine, floating } = useMemo(() => {
+        const m = new Map(); const fl = [];
+        for (const i of issues) {
+          const n = anchorLine(file.after, i.snippet);
+          if (n === null) { fl.push(i); continue; }
+          const k = `new:${n}`;
+          if (!m.has(k)) m.set(k, []);
+          m.get(k).push(i);
+        }
+        return { issuesByLine: m, floating: fl };
+      }, [issues, file.after]);
+
+      const pinned = (r) => byKey.has(keyOf(r)) || issuesByLine.has(keyOf(r)) || composer === keyOf(r);
+
+      // Fold long unchanged runs, but never hide a line that carries a comment,
+      // a revealed issue or an open composer.
+      const items = [];
+      for (let i = 0; i < rows.length;) {
+        if (rows[i].t !== 'ctx') { items.push({ row: rows[i] }); i++; continue; }
+        let j = i;
+        while (j < rows.length && rows[j].t === 'ctx') j++;
+        const lead = i === 0 ? 0 : DIFF_CONTEXT;
+        const trail = j === rows.length ? 0 : DIFF_CONTEXT;
+        const hidden = rows.slice(i + lead, j - trail);
+        if (hidden.length > 2 && !expanded.has(i) && !hidden.some(pinned)) {
+          rows.slice(i, i + lead).forEach((row) => items.push({ row }));
+          items.push({ fold: i, count: hidden.length });
+          rows.slice(j - trail, j).forEach((row) => items.push({ row }));
+        } else {
+          rows.slice(i, j).forEach((row) => items.push({ row }));
+        }
+        i = j;
+      }
+
+      const openComposer = (k) => { if (!editable) return; setComposer(k); setDraft(''); };
+      const saveComment = (r) => {
+        if (!draft.trim()) return;
+        onAdd({
+          id: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
+          path: file.path, side: r.t === 'del' ? 'old' : 'new', line: r.t === 'del' ? r.o : r.n,
+          code: r.text.slice(0, 300), body: draft.trim(),
+        });
+        setComposer(null); setDraft('');
+      };
+
+      return (
+        <div className="diff-file">
+          <div className="diff-file-head mono">
+            <span className="truncate">{file.path}</span>
+            {!file.before && <span className="pill pill-success" style={{ fontSize: 10, padding: '1px 7px' }}>new file</span>}
+          </div>
+          {floating.map((i) => <IssueCallout key={i.id} issue={i} result={issueResult.get(i.id)} />)}
+          <div className="diff-body">
+            {items.map((it, idx) => {
+              if (it.fold !== undefined) {
+                return (
+                  <button key={`f${it.fold}`} className="diff-fold mono"
+                    onClick={() => setExpanded((s) => new Set(s).add(it.fold))}>
+                    ⋯ {it.count} unchanged line{it.count === 1 ? '' : 's'}
+                  </button>
+                );
+              }
+              const r = it.row;
+              const k = keyOf(r);
+              return (
+                <React.Fragment key={`${k}:${idx}`}>
+                  <div className="diff-row" data-t={r.t} data-clickable={editable}
+                    onClick={() => openComposer(k)} title={editable ? 'Comment on this line' : undefined}>
+                    <span className="diff-num">{r.o ?? ''}</span>
+                    <span className="diff-num">{r.n ?? ''}</span>
+                    <span className="diff-sign">{r.t === 'add' ? '+' : r.t === 'del' ? '−' : ''}</span>
+                    <code className="diff-code" style={hangingIndent(r.text)}>{r.text || ' '}</code>
+                  </div>
+                  {(byKey.get(k) || []).map((c) => (
+                    <DiffComment key={c.id} c={c} editable={editable} onRemove={() => onRemove(c.id)} result={commentResult.get(c.id)} />
+                  ))}
+                  {(issuesByLine.get(k) || []).map((i) => <IssueCallout key={i.id} issue={i} result={issueResult.get(i.id)} />)}
+                  {composer === k && (
+                    <div className="diff-inline">
+                      <textarea autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} rows={3}
+                        className="field" placeholder="What's wrong here, why it matters, and what you'd suggest."
+                        onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveComment(r); if (e.key === 'Escape') setComposer(null); }} />
+                      <div className="flex gap-2" style={{ marginTop: 8 }}>
+                        <button onClick={() => saveComment(r)} className="btn btn-primary btn-sm" disabled={!draft.trim()}>Comment</button>
+                        <button onClick={() => setComposer(null)} className="btn btn-ghost btn-sm">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    const COMMENT_VERDICT = {
+      matched: { label: 'matches a planted issue', tone: 'good' },
+      valid_extra: { label: 'valid, not in the key', tone: 'info' },
+      noise: { label: 'noise', tone: 'low' },
+    };
+
+    function DiffComment({ c, editable, onRemove, result }) {
+      const v = result && COMMENT_VERDICT[result.verdict];
+      return (
+        <div className="diff-inline">
+          <div className="diff-comment">
+            <div className="flex items-start gap-2">
+              <IconMessage size={13} style={{ color: 'var(--primary)', marginTop: 3 }} />
+              <div style={{ flex: 1, whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.55 }}>{c.body}</div>
+              {editable && <button onClick={onRemove} className="icon-btn" aria-label="Delete comment" style={{ width: 26, height: 26 }}><IconX size={12} /></button>}
+            </div>
+            {v && (
+              <div className="flex items-start gap-2" style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+                <span className="pill" data-tone={v.tone} style={{ fontSize: 10, padding: '1px 7px' }}>{v.label}</span>
+                {result.note && <span style={{ lineHeight: 1.5 }}>{result.note}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function IssueCallout({ issue, result }) {
+      const caught = result?.caught;
+      return (
+        <div className="diff-inline">
+          <div className="issue-callout" data-tone={caught ? COVER_TONE[caught] : 'neutral'}>
+            <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 4 }}>
+              <span className="eyebrow" style={{ color: 'inherit' }}>Planted issue</span>
+              <span className="pill" style={{ fontSize: 10, padding: '1px 7px' }}>{issue.severity} · {issue.category}</span>
+              {caught && <span className="pill" data-tone={COVER_TONE[caught]} style={{ fontSize: 10, padding: '1px 7px' }}>{COVER_LABEL[caught]}</span>}
+            </div>
+            <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{issue.title}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--text)', marginTop: 3 }}>{issue.explanation}</div>
+            {result?.note && <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--muted)', marginTop: 6 }}>{result.note}</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // ---- Debugging ----------------------------------------------------
+    function CodeFile({ path, content, highlight }) {
+      const lines = (content || '').replace(/\n$/, '').split('\n');
+      return (
+        <div className="diff-file">
+          <div className="diff-file-head mono"><span className="truncate">{path}</span></div>
+          <div className="diff-body">
+            {lines.map((text, i) => (
+              <div key={i} className="diff-row code-row" data-t={highlight === i + 1 ? 'hit' : 'ctx'}>
+                <span className="diff-num">{i + 1}</span>
+                <code className="diff-code" style={hangingIndent(text)}>{text || ' '}</code>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const DEBUG_FIELDS = [
+      { k: 'location', label: 'Where is the bug?', rows: 1, placeholder: 'File and function (and line, if you can).' },
+      { k: 'root_cause', label: 'Root cause', rows: 4, placeholder: 'What is actually wrong, and how does it produce the symptom in the report?' },
+      { k: 'fix', label: 'Fix', rows: 7, mono: true, placeholder: 'The corrected code, or a precise description of the change.' },
+      { k: 'verify', label: 'How you would verify it', rows: 3, placeholder: 'A test you would write, or how you would reproduce it before and after.' },
+      { k: 'notes', label: 'Investigation notes', rows: 3, placeholder: 'Optional. Suspects you ruled out and why. The grader credits sound reasoning.' },
+    ];
+
+    function DebugPanel({ ex, response, setResponse, editable, revealed }) {
+      const a = ex.answer || {};
+      const hitFile = revealed ? a.file : null;
+      return (
+        <div className="stack-4">
+          <div className="card" style={{ padding: 18 }}>
+            <div className="eyebrow flex items-center gap-1.5" style={{ marginBottom: 10 }}><IconBug size={12} /> Bug report</div>
+            <div style={{ fontSize: 14, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{ex.bug_report}</div>
+            {ex.logs && (
+              <>
+                <div className="eyebrow" style={{ margin: '16px 0 8px' }}>Logs</div>
+                <pre className="code" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{ex.logs}</pre>
+              </>
+            )}
+          </div>
+
+          {(ex.files || []).map((f) => (
+            <CodeFile key={f.path} path={f.path} content={f.content}
+              highlight={hitFile === f.path ? anchorLine(f.content, a.snippet) : null} />
+          ))}
+
+          <div className="card" style={{ padding: 18 }}>
+            <div className="stack-4">
+              {DEBUG_FIELDS.map((fd) => editable ? (
+                <Field key={fd.k} label={fd.label} value={response[fd.k] || ''} rows={fd.rows} mono={fd.mono} inset
+                  placeholder={fd.placeholder} onChange={(v) => setResponse((r) => ({ ...r, [fd.k]: v }))} />
+              ) : (
+                <div key={fd.k}>
+                  <span className="field-label">{fd.label}</span>
+                  <div className={`readonly-block ${fd.mono ? 'mono' : ''}`}>{response[fd.k] || <span style={{ color: 'var(--faint)' }}>(blank)</span>}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {revealed && (
+            <div className="card answer-key" style={{ padding: 18 }}>
+              <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 12 }}>Answer key</div>
+              <div className="stack-4">
+                <div><span className="field-label">Location</span><div className="mono" style={{ fontSize: 12.5 }}>{a.file}: {a.snippet}</div></div>
+                <div><span className="field-label">Root cause</span><div className="readonly-block">{a.root_cause}</div></div>
+                <div><span className="field-label">Fix</span><div className="readonly-block">{a.fix}</div></div>
+                {a.patch && <pre className="code">{a.patch}</pre>}
+                {a.red_herrings?.length > 0 && (
+                  <div><span className="field-label">Red herrings</span><ul className="grade-ul">{a.red_herrings.map((r, i) => <li key={i}>{r}</li>)}</ul></div>
+                )}
+                {a.verify && <div><span className="field-label">Verification</span><div className="readonly-block">{a.verify}</div></div>}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ---- System design ------------------------------------------------
+    function DesignPanel({ ex, response, setResponse, followups, setFollowups, editable, revealed, grade }) {
+      const [showScale, setShowScale] = useState(!editable);
+      const filled = SD_PHASES.filter((p) => (response[p.k] || '').trim()).length;
+      const keyPoints = grade?.key_points?.length
+        ? grade.key_points
+        : (ex.key_points || []).map((point) => ({ point }));
+      const answering = editable && !!followups;
+
+      return (
+        <div className="stack-4">
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ fontSize: 15, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{ex.prompt}</div>
+            {ex.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5" style={{ marginTop: 12 }}>
+                {ex.tags.map((t) => <span key={t} className="pill">{t}</span>)}
+              </div>
+            )}
+            {ex.scale && (
+              showScale ? (
+                <div className="inset" style={{ padding: 12, marginTop: 14 }}>
+                  <div className="field-label" style={{ marginBottom: 5 }}>Scale & constraints</div>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{ex.scale}</div>
+                </div>
+              ) : (
+                <button onClick={() => setShowScale(true)} className="btn btn-ghost btn-sm" style={{ marginTop: 14 }}>
+                  <IconEye size={13} /> Ask about scale
+                </button>
+              )
+            )}
+          </div>
+
+          {editable && (
+            <div className="sd-progress mono">
+              {SD_PHASES.map((p) => (
+                <a key={p.k} href={`#sd-${p.k}`} className="sd-progress-dot" data-done={!!(response[p.k] || '').trim()} title={p.label}>{p.label}</a>
+              ))}
+              <span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{filled}/{SD_PHASES.length}</span>
+            </div>
+          )}
+
+          <div className="card" style={{ padding: 18 }}>
+            <div className="stack-5">
+              {SD_PHASES.map((p, i) => (
+                <div key={p.k} id={`sd-${p.k}`} style={{ scrollMarginTop: 90 }}>
+                  <div className="flex items-baseline gap-2" style={{ marginBottom: 4 }}>
+                    <span className="mono" style={{ fontSize: 10, color: 'var(--faint)' }}>{String(i + 1).padStart(2, '0')}</span>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{p.label}</span>
+                  </div>
+                  {editable && !answering ? (
+                    <>
+                      <div className="field-hint" style={{ margin: '0 0 8px' }}>{p.hint}</div>
+                      <textarea value={response[p.k] || ''} rows={p.mono ? 8 : 4}
+                        onChange={(e) => setResponse((r) => ({ ...r, [p.k]: e.target.value }))}
+                        className={`field field-inset ${p.mono ? 'mono' : ''}`} />
+                    </>
+                  ) : (
+                    <div className={`readonly-block ${p.mono ? 'mono' : ''}`}>{response[p.k] || <span style={{ color: 'var(--faint)' }}>(left blank)</span>}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {followups && followups.length > 0 && (
+            <div className="card followups" style={{ padding: 18 }}>
+              <div className="eyebrow flex items-center gap-1.5" style={{ color: 'var(--primary)', marginBottom: 12 }}>
+                <IconMessage size={12} /> Interviewer follow-ups
+              </div>
+              <div className="stack-4">
+                {followups.map((f, i) => (
+                  <div key={i}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, lineHeight: 1.3, marginBottom: 8 }}>{f.q}</div>
+                    {answering ? (
+                      <textarea value={f.a} rows={3} className="field field-inset"
+                        placeholder="Answer as you would out loud: decision first, then the reasoning."
+                        onChange={(e) => { const v = e.target.value; setFollowups((arr) => arr.map((x, j) => (j === i ? { ...x, a: v } : x))); }} />
+                    ) : (
+                      <div className="readonly-block">{f.a || <span style={{ color: 'var(--faint)' }}>(no answer)</span>}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {revealed && keyPoints.length > 0 && (
+            <div className="card answer-key" style={{ padding: 18 }}>
+              <div className="eyebrow" style={{ color: 'var(--accent)', marginBottom: 12 }}>Key points</div>
+              <div className="stack-3">
+                {keyPoints.map((k, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    {k.covered
+                      ? <span className="pill" data-tone={COVER_TONE[k.covered]} style={{ fontSize: 10, padding: '1px 7px', marginTop: 2 }}>{k.covered === 'yes' ? 'covered' : k.covered === 'partial' ? 'partial' : 'missed'}</span>
+                      : <span className="dot" style={{ background: 'var(--faint)', marginTop: 8 }} />}
+                    <div style={{ fontSize: 13.5, lineHeight: 1.55 }}>
+                      {k.point}
+                      {k.note && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{k.note}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {grade?.model_outline && (
+                <details style={{ marginTop: 16 }}>
+                  <summary className="btn btn-ghost btn-sm" style={{ display: 'inline-flex' }}>Show a strong outline</summary>
+                  <pre className="code" style={{ marginTop: 10, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-sans)', fontSize: 13 }}>{grade.model_outline}</pre>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ============================================================
 
     function EmptyState({ icon, title, body, cta, onCta, ctaIcon }) {
