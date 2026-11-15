@@ -236,7 +236,9 @@ supabase functions deploy generate-cards
 ```
 
 That's it. The Supabase gateway verifies the caller's JWT before the handler
-runs, so anonymous requests never reach OpenAI. The client sends the note body
+runs, but the public anon key is itself a valid JWT, so each function also asks
+Supabase Auth whether the token belongs to a signed-in user and returns 401 if
+not. Anonymous requests never reach OpenAI. The client sends the note body
 and the current session's access token; the function returns
 `{ cards: [{ front, back, code }] }` on success or an error envelope on
 failure. Any non-2xx response makes the client fall back to the heuristic,
