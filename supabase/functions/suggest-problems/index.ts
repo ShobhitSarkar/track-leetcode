@@ -139,14 +139,31 @@ const cleanPicks = (raw: unknown, blocklist: Set<string>) => {
   return out;
 };
 
+// The gateway's JWT check also accepts the project's public anon key (it is a
+// valid project JWT, and it ships in index.html), so on its own it can't tell
+// a signed-in user from anyone on the internet. Ask Auth who the token
+// belongs to before spending OpenAI credits on the request.
+async function isSignedInUser(req: Request): Promise<boolean> {
+  const auth = req.headers.get("Authorization");
+  const url = Deno.env.get("SUPABASE_URL");
+  if (!auth || !url) return false;
+  const apikey = Deno.env.get("SUPABASE_ANON_KEY") || req.headers.get("apikey") || "";
+  try {
+    const r = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: auth, apikey } });
+    if (!r.ok) return false;
+    const u = await r.json();
+    return typeof u?.id === "string" && u.id.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
-  // Same auth posture as generate-cards: Supabase's gateway verifies the JWT
-  // by default, but we still refuse anonymous traffic explicitly so a
-  // self-hosted deploy without gateway verification doesn't leak the key.
-  if (!req.headers.get("Authorization")) return json({ error: "unauthenticated" }, 401);
+  // Signed-in users only: see isSignedInUser for why the gateway isn't enough.
+  if (!(await isSignedInUser(req))) return json({ error: "unauthenticated" }, 401);
 
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) return json({ error: "OPENAI_API_KEY not configured" }, 500);

@@ -3,7 +3,8 @@
 // Takes a note (title, topic, body) and returns a small set of flashcards
 // produced by OpenAI. The client posts to this function; Supabase verifies
 // the caller's JWT before the handler runs (default `--verify-jwt` behavior),
-// so anonymous requests never reach the OpenAI key.
+// and isSignedInUser() then rejects the public anon key, which the gateway
+// alone accepts, so anonymous requests never reach the OpenAI key.
 //
 // Deploy:  supabase functions deploy generate-cards
 // Secret:  supabase secrets set OPENAI_API_KEY=sk-...
@@ -65,6 +66,25 @@ const cleanCards = (raw: unknown) => {
     }));
 };
 
+// The gateway's JWT check also accepts the project's public anon key (it is a
+// valid project JWT, and it ships in index.html), so on its own it can't tell
+// a signed-in user from anyone on the internet. Ask Auth who the token
+// belongs to before spending OpenAI credits on the request.
+async function isSignedInUser(req: Request): Promise<boolean> {
+  const auth = req.headers.get("Authorization");
+  const url = Deno.env.get("SUPABASE_URL");
+  if (!auth || !url) return false;
+  const apikey = Deno.env.get("SUPABASE_ANON_KEY") || req.headers.get("apikey") || "";
+  try {
+    const r = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: auth, apikey } });
+    if (!r.ok) return false;
+    const u = await r.json();
+    return typeof u?.id === "string" && u.id.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -73,7 +93,7 @@ Deno.serve(async (req) => {
   // we can assume the caller is authenticated. We still check for the header
   // so a self-hosted deploy without gateway verification degrades to 401
   // instead of silently accepting anonymous traffic.
-  if (!req.headers.get("Authorization")) return json({ error: "unauthenticated" }, 401);
+  if (!(await isSignedInUser(req))) return json({ error: "unauthenticated" }, 401);
 
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) return json({ error: "OPENAI_API_KEY not configured" }, 500);
